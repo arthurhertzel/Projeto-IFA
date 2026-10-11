@@ -12,7 +12,7 @@
             overflow: hidden;
             background-color: #1a202c;
             font-family: 'Inter', sans-serif;
-            touch-action: none; /* Previne scroll no mobile */
+            touch-action: none; 
         }
         #gameCanvas {
             display: block;
@@ -25,18 +25,17 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Deixa os cliques passarem para o canvas por padrão */
+            pointer-events: none; 
             display: flex;
             flex-direction: column;
         }
         .interactive-ui {
-            pointer-events: auto; /* Permite cliques nos menus */
+            pointer-events: auto; 
         }
         .hidden-ui {
             display: none !important;
         }
-        
-        /* Animações */
+
         @keyframes pulse-border {
             0% { border-color: rgba(74, 222, 128, 0.5); }
             50% { border-color: rgba(74, 222, 128, 1); }
@@ -46,12 +45,12 @@
             animation: pulse-border 2s infinite;
         }
 
-        /* Controles Mobile */
+
         #mobileControls {
             position: absolute;
             bottom: 20px;
             width: 100%;
-            display: none; /* Mostrado apenas em touch */
+            display: none; 
             justify-content: space-between;
             padding: 0 30px;
             box-sizing: border-box;
@@ -93,7 +92,7 @@
         }
         .action-btn:active { background: rgba(37, 99, 235, 0.9); }
 
-        /* Estilos de scrollbar para modais longos */
+        
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 4px; }
@@ -103,11 +102,10 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Camada de Interface HUD (Sempre visível durante o jogo) -->
+
     <div id="hudLayer" class="ui-layer hidden-ui">
         <div class="flex justify-between items-start p-4">
-            <!-- Stats -->
-            <div class="bg-gray-900/90 border-2 border-gray-700 p-3 rounded-xl shadow-lg interactive-ui">
+                     <div class="bg-gray-900/90 border-2 border-gray-700 p-3 rounded-xl shadow-lg interactive-ui">
                 <div class="text-green-400 font-bold text-xl flex items-center">
                     <span class="mr-2">💰</span> <span id="hudCredits">0</span> Cr
                 </div>
@@ -119,7 +117,7 @@
                 </div>
             </div>
 
-            <!-- Missão Atual -->
+            
             <div class="bg-gray-900/90 border-2 border-blue-500 p-3 rounded-xl shadow-lg max-w-xs text-right interactive-ui mission-active">
                 <div class="text-blue-400 font-bold text-xs uppercase tracking-wider mb-1">Missão Atual</div>
                 <div id="hudMissionTitle" class="text-white font-bold text-sm mb-1">Carregando...</div>
@@ -127,7 +125,7 @@
             </div>
         </div>
 
-        <!-- Botões de Menu (Direita) -->
+
         <div class="absolute right-4 top-1/4 flex flex-col gap-2 interactive-ui">
             <button onclick="uiManager.showMenu('upgradesMenu')" class="bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-full shadow-lg transition transform hover:scale-110 tooltip">
                 🛠️
@@ -143,16 +141,14 @@
             </button>
         </div>
 
-        <!-- Notificações Flutuantes Centrais -->
-        <div id="notificationArea" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 text-center pointer-events-none"></div>
         
-        <!-- Dica de Interação -->
-        <div id="interactionHint" class="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-white/90 text-black px-6 py-2 rounded-full font-bold shadow-lg hidden-ui interactive-ui">
+        <div id="notificationArea" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 text-center pointer-events-none"></div>
+   <div id="interactionHint" class="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-white/90 text-black px-6 py-2 rounded-full font-bold shadow-lg hidden-ui interactive-ui">
             Pressione [E] ou o botão para interagir
         </div>
     </div>
 
-    <!-- Controles Mobile -->
+
     <div id="mobileControls">
         <div class="joystick-base" id="joystickBase">
             <div class="joystick-stick" id="joystickStick"></div>
@@ -160,7 +156,7 @@
         <div class="action-btn shadow-lg" id="actionBtn">AÇÃO</div>
     </div>
 
-    <!-- Menu Principal -->
+
     <div id="mainMenu" class="ui-layer interactive-ui bg-gray-900 flex items-center justify-center">
         <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 max-w-md w-full text-center">
             <div class="text-4xl mb-2">♻️</div>
@@ -176,7 +172,7 @@
                 Material de Estudo
             </button>
 
-            <!-- NOVO BOTÃO ADICIONADO AQUI -->
+
             <button onclick="game.resetSave()" class="w-full mt-4 bg-red-900/80 hover:bg-red-700 text-red-200 font-bold py-2 rounded-xl transition text-sm border border-red-800">
                 🔄 Zerar Jogo (Para Novo Aluno)
             </button>
@@ -188,7 +184,6 @@
         </div>
     </div>
 
-    <!-- Menu de Pausa -->
     <div id="pauseMenu" class="ui-layer interactive-ui bg-black/80 flex items-center justify-center hidden-ui">
         <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 text-center min-w-[300px]">
             <h2 class="text-2xl font-bold text-white mb-6">Jogo Pausado</h2>
@@ -197,7 +192,7 @@
         </div>
     </div>
 
-    <!-- Loja de Melhorias (Tycoon) -->
+    
     <div id="upgradesMenu" class="ui-layer interactive-ui bg-black/80 flex items-center justify-center hidden-ui">
         <div class="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 w-11/12 max-w-2xl max-h-[90vh] flex flex-col">
             <div class="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-2xl">
@@ -206,12 +201,10 @@
                 <button onclick="uiManager.hideMenu('upgradesMenu')" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto custom-scrollbar flex-1" id="upgradesList">
-                <!-- Populado via JS -->
+                
             </div>
         </div>
     </div>
-
-    <!-- Hub de Minigames -->
     <div id="minigameHub" class="ui-layer interactive-ui bg-black/80 flex items-center justify-center hidden-ui">
         <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 max-w-lg w-full text-center">
             <h2 class="text-2xl font-bold text-white mb-6">Centro de Treinamento</h2>
@@ -235,7 +228,7 @@
         </div>
     </div>
 
-    <!-- Interface: Desafio do Descarte -->
+
     <div id="descarteGame" class="ui-layer interactive-ui bg-gray-900 flex flex-col items-center justify-center hidden-ui">
         <div class="w-full max-w-3xl p-6">
             <div class="flex justify-between items-center mb-8 bg-gray-800 p-4 rounded-xl border border-gray-700">
@@ -270,7 +263,7 @@
         </div>
     </div>
 
-    <!-- Interface: Quiz -->
+    
     <div id="quizGame" class="ui-layer interactive-ui bg-blue-900/95 flex flex-col items-center justify-center hidden-ui">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl w-11/12">
             <div class="flex justify-between text-gray-500 font-bold mb-4 text-sm border-b pb-2">
@@ -279,7 +272,7 @@
             </div>
             <h3 id="quizQuestion" class="text-xl md:text-2xl font-bold text-gray-800 mb-6">Pergunta vai aqui?</h3>
             <div id="quizOptions" class="grid gap-3 mb-6">
-                <!-- Botões gerados via JS -->
+            
             </div>
             <div id="quizExplanation" class="hidden bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-blue-900 text-sm"></div>
             <div class="flex justify-between items-center">
@@ -290,22 +283,22 @@
         </div>
     </div>
 
-    <!-- Interface: Central de Triagem (Descarregamento) -->
+   
     <div id="triagemMenu" class="ui-layer interactive-ui bg-black/90 flex flex-col items-center justify-center hidden-ui">
         <div class="bg-gray-800 p-6 rounded-2xl max-w-4xl w-11/12 border-2 border-green-500 flex flex-col max-h-[90vh]">
             <h2 class="text-2xl font-bold text-white mb-2 text-center">Central de Triagem</h2>
             <p class="text-gray-400 text-center mb-6 text-sm">Encaminhe os resíduos coletados para o tratamento correto para maximizar seus ganhos.</p>
             
             <div class="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-                <!-- Inventário do Caminhão -->
+                
                 <div class="w-full md:w-1/3 bg-gray-900 rounded-xl p-4 overflow-y-auto custom-scrollbar flex flex-col">
                     <h3 class="text-white font-bold mb-4 border-b border-gray-700 pb-2">Carga (<span id="triagemLoadCount">0</span>)</h3>
                     <div id="triagemItems" class="flex flex-col gap-2 flex-1">
-                        <!-- Itens via JS -->
+                        
                     </div>
                 </div>
 
-                <!-- Setores de Destino -->
+                
                 <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="bg-red-900/50 border border-red-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-red-800/50 transition" onclick="central.processItem('A')">
                         <div class="text-3xl mb-2">🔥</div>
@@ -347,7 +340,7 @@
         </div>
     </div>
 
-    <!-- Menu Aprenda -->
+
     <div id="learnMenu" class="ui-layer interactive-ui bg-black/90 flex items-center justify-center hidden-ui">
         <div class="bg-white rounded-2xl shadow-2xl w-11/12 max-w-3xl max-h-[90vh] flex flex-col text-gray-800">
             <div class="p-6 border-b flex justify-between items-center bg-teal-600 rounded-t-2xl text-white">
@@ -377,7 +370,7 @@
     </div>
 
     <script>
-        // --- DADOS DO JOGO ---
+        
         const WasteGroups = {
             A: { name: 'Biológico', color: '#EF4444', desc: 'Risco de infecção.' },
             B: { name: 'Químico', color: '#F97316', desc: 'Tóxico/Corrosivo.' },
@@ -406,10 +399,10 @@
                 { id: 'central', name: 'Central de Gerenciamento', x: 800, y: 1500, w: 500, h: 350, color: '#fcd34d', isCentral: true }
             ],
             roads: [
-                { x: 100, y: 550, w: 1800, h: 100 }, // Horizontal superior
-                { x: 100, y: 1350, w: 1800, h: 100 }, // Horizontal inferior
-                { x: 650, y: 100, w: 100, h: 1800 }, // Vertical esquerda
-                { x: 1200, y: 100, w: 100, h: 1800 }  // Vertical direita
+                { x: 100, y: 550, w: 1800, h: 100 }, 
+                { x: 100, y: 1350, w: 1800, h: 100 }, 
+                { x: 650, y: 100, w: 100, h: 1800 }, 
+                { x: 1200, y: 100, w: 100, h: 1800 }  
             ]
         };
 
@@ -436,15 +429,15 @@
             { id: 6, title: "Operação Livre", desc: "Campanha concluída! Continue gerenciando e melhorando a empresa.", target: Infinity, type: 'freePlay' }
         ];
 
-        // --- ESTADO GLOBAL ---
+        
         let state = {
-            mode: 'menu', // menu, playing, paused, minigame
+            mode: 'menu',
             lastTime: 0,
             camera: { x: 0, y: 0 },
             keys: {},
             touch: { active: false, dx: 0, dy: 0, action: false },
             
-            // Dados Salvos
+            
             save: {
                 credits: 0,
                 xp: 0,
@@ -457,17 +450,17 @@
             player: {
                 x: 800, y: 1400, w: 40, h: 60,
                 speed: 300, maxCapacity: 5, load: [],
-                sortBonus: 1, // Multiplicador de lucro na triagem manual
+                sortBonus: 1,
                 angle: 0
             },
 
             worldEntities: {
-                wasteNodes: [] // [{x, y, item: {name, group}}]
+                wasteNodes: [] 
             }
         };
 
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Otimização
+        const ctx = canvas.getContext('2d', { alpha: false });
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -476,7 +469,7 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Input Teclado
+        
         window.addEventListener('keydown', e => {
             state.keys[e.key.toLowerCase()] = true;
             if (e.key.toLowerCase() === 'escape') {
@@ -487,7 +480,7 @@
         });
         window.addEventListener('keyup', e => state.keys[e.key.toLowerCase()] = false);
 
-        // Input Mobile Joystick Simples
+        
         const jBase = document.getElementById('joystickBase');
         const jStick = document.getElementById('joystickStick');
         const aBtn = document.getElementById('actionBtn');
@@ -526,12 +519,12 @@
             
             jStick.style.transform = `translate(${dx}px, ${dy}px)`;
             
-            // Normalizar para o player (-1 a 1)
+            
             state.touch.dx = dx / maxDist;
             state.touch.dy = dy / maxDist;
         }
 
-        // Save System
+        
         const Storage = {
             save() {
                 localStorage.setItem('residuosSave', JSON.stringify(state.save));
@@ -554,12 +547,12 @@
         };
 
         function applyUpgrades() {
-            // Reseta base
+
             state.player.maxCapacity = 5;
             state.player.speed = 300;
             state.player.sortBonus = 1;
             
-            // Aplica níveis salvos
+            
             for (let upg of UpgradesData) {
                 let lvl = state.save.upgrades[upg.id] || 0;
                 for (let i=0; i<lvl; i++) { upg.effect(state.player); }
@@ -569,7 +562,7 @@
         function update(dt) {
             if (state.mode !== 'playing') return;
 
-            // Movimento
+            
             let vx = 0, vy = 0;
             
             if (state.keys['w'] || state.keys['arrowup']) vy -= 1;
@@ -582,7 +575,7 @@
                 vy = state.touch.dy;
             }
 
-            // Normalizar vetor para movimento diagonal não ser mais rápido
+            
             const len = Math.sqrt(vx*vx + vy*vy);
             if (len > 0) {
                 vx /= len; vy /= len;
@@ -593,11 +586,10 @@
             const newX = state.player.x + vx * step;
             const newY = state.player.y + vy * step;
 
-            // Colisões AABB com os prédios e bordas
             let canMoveX = true;
             let canMoveY = true;
 
-            // Limites do mapa
+            
             if (newX < 0 || newX + state.player.w > MapData.width) canMoveX = false;
             if (newY < 0 || newY + state.player.h > MapData.height) canMoveY = false;
 
@@ -612,14 +604,14 @@
             if (canMoveX) state.player.x = newX;
             if (canMoveY) state.player.y = newY;
 
-            // Spawn de resíduos (simples, probabilidade)
+            
             if (Math.random() < 0.02 * dt) spawnWaste();
 
-            // Atualiza câmera
+            
             state.camera.x = state.player.x + state.player.w/2 - canvas.width/2;
             state.camera.y = state.player.y + state.player.h/2 - canvas.height/2;
 
-            // Limita câmera às bordas do mapa
+            
             state.camera.x = Math.max(0, Math.min(state.camera.x, MapData.width - canvas.width));
             state.camera.y = Math.max(0, Math.min(state.camera.y, MapData.height - canvas.height));
 
@@ -641,7 +633,7 @@
 
             const pCenter = { x: state.player.x + state.player.w/2, y: state.player.y + state.player.h/2 };
 
-            // Verifica nodes
+            
             for (let i = state.worldEntities.wasteNodes.length - 1; i >= 0; i--) {
                 const node = state.worldEntities.wasteNodes[i];
                 const dist = Math.hypot(pCenter.x - node.x, pCenter.y - node.y);
@@ -652,10 +644,10 @@
                 }
             }
 
-            // Verifica Central
+            
             const centralB = MapData.buildings.find(b => b.isCentral);
             if (centralB) {
-                // Checar se o player está na área de entrada (embaixo do prédio)
+                
                 const entranceRect = { x: centralB.x, y: centralB.y + centralB.h, w: centralB.w, h: 50 };
                 if (checkCollision({x: state.player.x, y: state.player.y, w: state.player.w, h: state.player.h}, entranceRect)) {
                     isNearCentral = true;
@@ -689,20 +681,19 @@
         }
 
         function spawnWaste() {
-            if (state.worldEntities.wasteNodes.length > 15) return; // Limite
+            if (state.worldEntities.wasteNodes.length > 15) return; 
             
-            // Escolhe prédio aleatório (exceto central)
+            
             const targets = MapData.buildings.filter(b => !b.isCentral);
             const b = targets[Math.floor(Math.random() * targets.length)];
             
-            // Escolhe grupo baseado no prédio
             const group = b.spawns[Math.floor(Math.random() * b.spawns.length)];
             const possibleItems = WasteItemsTemplate.filter(i => i.group === group);
             const item = possibleItems[Math.floor(Math.random() * possibleItems.length)];
 
-            // Posição aleatória ao redor da porta/borda do prédio
+            
             const x = b.x + Math.random() * b.w;
-            const y = b.y + b.h + 10; // Embaixo do prédio
+            const y = b.y + b.h + 10;
 
             state.worldEntities.wasteNodes.push({ x, y, item, w:20, h:20, anim: Math.random() * 100 });
         }
@@ -723,7 +714,6 @@
                     return;
                 }
 
-                // Renderiza apenas o primeiro item para obrigar processamento sequencial
                 const item = state.player.load[0];
                 const div = document.createElement('div');
                 div.className = `p-3 rounded border-l-4 bg-gray-800 flex justify-between items-center`;
@@ -755,14 +745,14 @@
                     if(item.group === 'A') missionSystem.progress('processA', 1);
 
                 } else {
-                    // Erro
+                    
                     const penalty = 5;
                     state.save.credits = Math.max(0, state.save.credits - penalty);
                     feedbackDiv.innerHTML = `<span class="text-red-400">❌ Incorreto. ${item.name} é Grupo ${item.group}. -${penalty}Cr</span>`;
                     uiManager.updateHUD();
                 }
 
-                // Remove o item processado
+                
                 state.player.load.shift();
                 uiManager.updateHUD();
                 
@@ -774,11 +764,11 @@
                 }
             },
             autoProcess() {
-                // Processa tudo rápido, mas com lucro menor (50%)
+                
                 if (state.player.load.length === 0) return;
                 
                 let count = state.player.load.length;
-                let totalGain = count * 5; // Valor fixo menor
+                let totalGain = count * 5; 
                 
                 game.addCredits(totalGain);
                 game.addXP(count * 2);
@@ -802,7 +792,7 @@
                 uiManager.updateHUD();
                 missionSystem.updateUI();
                 
-                // Spawn inicial
+                
                 for(let i=0; i<5; i++) spawnWaste();
             },
             addCredits(val) {
@@ -855,7 +845,7 @@
             }
         };
 
-        // UI de Upgrades
+
         function renderUpgrades() {
             const list = document.getElementById('upgradesList');
             document.getElementById('upgradesCredits').innerText = state.save.credits;
@@ -910,7 +900,7 @@
         };
 
         const minigames = {
-            // --- Desafio do Descarte ---
+            
             descTimer: 0,
             descScore: 0,
             descInterval: null,
@@ -920,7 +910,7 @@
                 uiManager.hideMenu('minigameHub');
                 uiManager.showMenu('descarteGame');
                 this.descScore = 0;
-                this.descTimer = 30; // 30 segundos
+                this.descTimer = 30; 
                 this.updateDescUI();
                 this.nextDescItem();
                 
@@ -944,7 +934,7 @@
                 if(this.descCurrentItem.group === group) {
                     this.descScore += 10;
                     feedback.innerHTML = `<span class="text-green-500">Correto! +10</span>`;
-                    // Bônus de tempo
+                    
                     if(this.descScore % 30 === 0) this.descTimer += 5; 
                 } else {
                     this.descScore = Math.max(0, this.descScore - 5);
@@ -970,7 +960,7 @@
                 }
             },
 
-            // --- Quiz ---
+            
             quizQuestions: [],
             quizIndex: 0,
             quizScore: 0,
@@ -978,7 +968,7 @@
             startQuiz() {
                 uiManager.hideMenu('minigameHub');
                 uiManager.showMenu('quizGame');
-                // Embaralha e pega 5
+                
                 this.quizQuestions = [...QuizzesData].sort(() => 0.5 - Math.random()).slice(0, 5);
                 this.quizIndex = 0;
                 this.quizScore = 0;
@@ -1011,7 +1001,7 @@
             checkQuiz(idx, btn) {
                 const q = this.quizQuestions[this.quizIndex];
                 const optsContainer = document.getElementById('quizOptions');
-                // Desabilita botões
+                
                 Array.from(optsContainer.children).forEach(b => b.onclick = null);
 
                 if(idx === q.ans) {
@@ -1021,7 +1011,7 @@
                 } else {
                     btn.classList.replace('bg-gray-100', 'bg-red-500');
                     btn.classList.replace('text-gray-800', 'text-white');
-                    optsContainer.children[q.ans].classList.replace('bg-gray-100', 'bg-green-200'); // Mostra a certa
+                    optsContainer.children[q.ans].classList.replace('bg-gray-100', 'bg-green-200'); 
                 }
 
                 document.getElementById('quizScore').innerText = this.quizScore;
@@ -1053,11 +1043,10 @@
             menus: ['mainMenu', 'pauseMenu', 'upgradesMenu', 'minigameHub', 'descarteGame', 'quizGame', 'triagemMenu', 'learnMenu'],
             
             showMenu(id) {
-                // Se o jogo estava rodando e abrindo um menu overlay, não precisa mudar o state.mode para 'menu',
-                // mas sim para um estado que pause atualizações se necessário.
+                
                 if (id === 'pauseMenu') state.mode = 'paused';
                 else if (id !== 'mainMenu') {
-                    // Para menus in-game, pausar movimento
+                    
                     state.keys = {}; 
                 }
 
@@ -1069,7 +1058,7 @@
             hideMenu(id) {
                 document.getElementById(id).classList.add('hidden-ui');
                 if (id === 'pauseMenu' || state.mode !== 'menu') {
-                    state.mode = 'playing'; // Retorna ao jogo
+                    state.mode = 'playing';
                 }
             },
             updateHUD() {
@@ -1086,7 +1075,7 @@
                     loadEl.classList.remove('text-red-500');
                 }
                 
-                // Mostrar HUD camada se playing
+                
                 if(state.mode === 'playing') document.getElementById('hudLayer').classList.remove('hidden-ui');
             },
             showHint(text) {
@@ -1113,59 +1102,59 @@
             }
         };
 
-        // --- RENDERIZAÇÃO DO CANVAS ---
+        
         function draw() {
-            // Limpa tela
+            
             ctx.fillStyle = '#1a202c';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (state.mode !== 'playing' && state.mode !== 'paused') return;
 
             ctx.save();
-            // Aplica Câmera
+            
             ctx.translate(-Math.floor(state.camera.x), -Math.floor(state.camera.y));
 
-            // Desenha Fundo (Grama)
+            
             ctx.fillStyle = MapData.bgColors.grass;
             ctx.fillRect(0, 0, MapData.width, MapData.height);
 
-            // Desenha Ruas
+            
             ctx.fillStyle = MapData.bgColors.road;
             MapData.roads.forEach(r => ctx.fillRect(r.x, r.y, r.w, r.h));
 
-            // Linhas de rua (detalhe visual)
-            ctx.strokeStyle = '#fcd34d'; // amarelo tracejado
+            
+            ctx.strokeStyle = '#fcd34d';
             ctx.lineWidth = 4;
             ctx.setLineDash([20, 20]);
             ctx.beginPath();
             MapData.roads.forEach(r => {
-                if(r.w > r.h) { // horizontal
+                if(r.w > r.h) {
                     ctx.moveTo(r.x, r.y + r.h/2);
                     ctx.lineTo(r.x + r.w, r.y + r.h/2);
-                } else { // vertical
+                } else {
                     ctx.moveTo(r.x + r.w/2, r.y);
                     ctx.lineTo(r.x + r.w/2, r.y + r.h);
                 }
             });
             ctx.stroke();
-            ctx.setLineDash([]); // reseta
+            ctx.setLineDash([]);
 
-            // Desenha Prédios
+            
             MapData.buildings.forEach(b => {
-                // Calçada
+                
                 ctx.fillStyle = MapData.bgColors.sidewalk;
                 ctx.fillRect(b.x - 10, b.y - 10, b.w + 20, b.h + 20);
 
-                // Prédio base
+                
                 ctx.fillStyle = b.color;
                 ctx.fillRect(b.x, b.y, b.w, b.h);
 
-                // Sombra interna/Borda
+                
                 ctx.strokeStyle = 'rgba(0,0,0,0.3)';
                 ctx.lineWidth = 8;
                 ctx.strokeRect(b.x+4, b.y+4, b.w-8, b.h-8);
 
-                // Texto do Prédio
+            
                 ctx.fillStyle = 'rgba(0,0,0,0.7)';
                 ctx.fillRect(b.x, b.y + b.h/2 - 20, b.w, 40);
                 ctx.fillStyle = '#ffffff';
@@ -1175,7 +1164,7 @@
                 ctx.fillText(b.name, b.x + b.w/2, b.y + b.h/2);
 
                 if(b.isCentral) {
-                    ctx.fillStyle = '#10b981'; // Area de entrega
+                    ctx.fillStyle = '#10b981';
                     ctx.fillRect(b.x + b.w/2 - 50, b.y + b.h, 100, 30);
                     ctx.fillStyle = '#000';
                     ctx.font = 'bold 12px Inter';
@@ -1183,23 +1172,22 @@
                 }
             });
 
-            // Desenha Resíduos (Nodes)
             const time = performance.now();
             state.worldEntities.wasteNodes.forEach(node => {
                 const bounce = Math.sin((time + node.anim) / 200) * 5;
                 const c = WasteGroups[node.item.group].color;
                 
-                // Brilho
+                
                 ctx.shadowColor = c;
                 ctx.shadowBlur = 10;
                 
                 ctx.fillStyle = c;
                 ctx.fillRect(node.x - 10, node.y - 10 + bounce, 20, 20);
                 
-                // Reset shadow
+                
                 ctx.shadowBlur = 0;
                 
-                // Letra do grupo
+                
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 14px Inter';
                 ctx.textAlign = 'center';
@@ -1207,35 +1195,35 @@
                 ctx.fillText(node.item.group, node.x, node.y + bounce);
             });
 
-            // Desenha Jogador (Caminhão)
+            
             ctx.save();
             ctx.translate(state.player.x + state.player.w/2, state.player.y + state.player.h/2);
             ctx.rotate(state.player.angle);
             
-            // Corpo do caminhão
-            ctx.fillStyle = '#e2e8f0'; // Prata/Branco
+            
+            ctx.fillStyle = '#e2e8f0'; 
             ctx.fillRect(-state.player.w/2, -state.player.h/2, state.player.w, state.player.h);
             
-            // Cabine (Azul) indicando a frente
+            
             ctx.fillStyle = '#3b82f6'; 
             ctx.fillRect(-state.player.w/2, -state.player.h/2, state.player.w, state.player.h * 0.3);
 
-            // Carga visual (Quadrados coloridos baseados no load)
+            
             if (state.player.load.length > 0) {
-                const loadH = state.player.h * 0.6; // area da cacamba
+                const loadH = state.player.h * 0.6; 
                 const itemH = loadH / state.player.maxCapacity;
                 
                 for(let i=0; i<state.player.load.length; i++) {
                     const item = state.player.load[i];
                     ctx.fillStyle = WasteGroups[item.group].color;
-                    // Desenha do fundo para frente
+                    
                     ctx.fillRect(-state.player.w/2 + 4, (state.player.h/2) - (i * itemH) - itemH, state.player.w - 8, itemH - 2);
                 }
             }
             
             ctx.restore();
 
-            // Indicador de interação em cima do player se houver alvo
+            
             if (currentInteractionNode || isNearCentral) {
                  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                  ctx.beginPath();
@@ -1243,14 +1231,14 @@
                  ctx.fill();
             }
 
-            ctx.restore(); // Fim câmera
+            ctx.restore(); 
         }
 
         function loop(timestamp) {
             const dt = (timestamp - state.lastTime) / 1000;
             state.lastTime = timestamp;
 
-            // Limita dt para evitar pulos grandes se a aba ficar inativa
+            
             if (dt < 0.1) {
                 update(dt);
             }
@@ -1259,7 +1247,7 @@
             requestAnimationFrame(loop);
         }
 
-        // Bootstrap
+        
         window.onload = () => {
             uiManager.showMenu('mainMenu');
             requestAnimationFrame((t) => { state.lastTime = t; loop(t); });
