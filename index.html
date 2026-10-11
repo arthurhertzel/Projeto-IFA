@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Resíduos de Saúde: Descarte que Protege</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a202c;
+            font-family: 'Inter', sans-serif;
+            touch-action: none; /* Previne scroll no mobile */
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Deixa os cliques passarem para o canvas por padrão */
+            display: flex;
+            flex-direction: column;
+        }
+        .interactive-ui {
+            pointer-events: auto; /* Permite cliques nos menus */
+        }
+        .hidden-ui {
+            display: none !important;
+        }
+        
+        /* Animações */
+        @keyframes pulse-border {
+            0% { border-color: rgba(74, 222, 128, 0.5); }
+            50% { border-color: rgba(74, 222, 128, 1); }
+            100% { border-color: rgba(74, 222, 128, 0.5); }
+        }
+        .mission-active {
+            animation: pulse-border 2s infinite;
+        }
+
+        /* Controles Mobile */
+        #mobileControls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: none; /* Mostrado apenas em touch */
+            justify-content: space-between;
+            padding: 0 30px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        @media (max-width: 768px) {
+            #mobileControls { display: flex; }
+            .desktop-hint { display: none; }
+        }
+        .joystick-base {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+        }
+        .joystick-stick {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+            top: 35px;
+            left: 35px;
+        }
+        .action-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(59, 130, 246, 0.7);
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            border: 4px solid rgba(255,255,255,0.3);
+        }
+        .action-btn:active { background: rgba(37, 99, 235, 0.9); }
+
+        /* Estilos de scrollbar para modais longos */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Camada de Interface HUD (Sempre visível durante o jogo) -->
+    <div id="hudLayer" class="ui-layer hidden-ui">
+        <div class="flex justify-between items-start p-4">
+            <!-- Stats -->
+            <div class="bg-gray-900/90 border-2 border-gray-700 p-3 rounded-xl shadow-lg interactive-ui">
+                <div class="text-green-400 font-bold text-xl flex items-center">
+                    <span class="mr-2">💰</span> <span id="hudCredits">0</span> Cr
+                </div>
+                <div class="text-blue-400 font-bold text-sm mt-1">
+                    Nível <span id="hudLevel">1</span> (<span id="hudXP">0</span> XP)
+                </div>
+                <div class="text-white text-sm mt-2 border-t border-gray-700 pt-1">
+                    Carga: <span id="hudLoad" class="font-bold">0</span> / <span id="hudCapacity">5</span>
+                </div>
+            </div>
+
+            <!-- Missão Atual -->
+            <div class="bg-gray-900/90 border-2 border-blue-500 p-3 rounded-xl shadow-lg max-w-xs text-right interactive-ui mission-active">
+                <div class="text-blue-400 font-bold text-xs uppercase tracking-wider mb-1">Missão Atual</div>
+                <div id="hudMissionTitle" class="text-white font-bold text-sm mb-1">Carregando...</div>
+                <div id="hudMissionDesc" class="text-gray-300 text-xs">Aguarde...</div>
+            </div>
+        </div>
+
+        <!-- Botões de Menu (Direita) -->
+        <div class="absolute right-4 top-1/4 flex flex-col gap-2 interactive-ui">
+            <button onclick="uiManager.showMenu('upgradesMenu')" class="bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-full shadow-lg transition transform hover:scale-110 tooltip">
+                🛠️
+            </button>
+            <button onclick="uiManager.showMenu('minigameHub')" class="bg-purple-600 hover:bg-purple-500 text-white p-3 rounded-full shadow-lg transition transform hover:scale-110">
+                🎮
+            </button>
+            <button onclick="uiManager.showMenu('learnMenu')" class="bg-teal-600 hover:bg-teal-500 text-white p-3 rounded-full shadow-lg transition transform hover:scale-110">
+                📚
+            </button>
+            <button onclick="uiManager.showMenu('pauseMenu')" class="bg-gray-600 hover:bg-gray-500 text-white p-3 rounded-full shadow-lg transition transform hover:scale-110 mt-4">
+                ⏸️
+            </button>
+        </div>
+
+        <!-- Notificações Flutuantes Centrais -->
+        <div id="notificationArea" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 text-center pointer-events-none"></div>
+        
+        <!-- Dica de Interação -->
+        <div id="interactionHint" class="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-white/90 text-black px-6 py-2 rounded-full font-bold shadow-lg hidden-ui interactive-ui">
+            Pressione [E] ou o botão para interagir
+        </div>
+    </div>
+
+    <!-- Controles Mobile -->
+    <div id="mobileControls">
+        <div class="joystick-base" id="joystickBase">
+            <div class="joystick-stick" id="joystickStick"></div>
+        </div>
+        <div class="action-btn shadow-lg" id="actionBtn">AÇÃO</div>
+    </div>
+
+    <!-- Menu Principal -->
+    <div id="mainMenu" class="ui-layer interactive-ui bg-gray-900 flex items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 max-w-md w-full text-center">
+            <div class="text-4xl mb-2">♻️</div>
+            <h1 class="text-3xl font-extrabold text-white mb-2 leading-tight">Resíduos de Saúde</h1>
+            <h2 class="text-lg text-green-400 font-semibold mb-6">Descarte que Protege</h2>
+            <p class="text-gray-400 text-sm mb-8">Colete com responsabilidade. Separe com inteligência. Proteja vidas.</p>
+            
+            <button onclick="game.start()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 mb-4 text-lg">
+                Iniciar Expediente
+            </button>
+            
+            <button onclick="uiManager.showMenu('learnMenu')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg transition">
+                Material de Estudo
+            </button>
+
+            <div class="mt-6 text-xs text-gray-500">
+                Controles PC: WASD/Setas para mover, E para agir.<br>
+                Trabalho Escolar: Biologia, Química e Matemática.
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu de Pausa -->
+    <div id="pauseMenu" class="ui-layer interactive-ui bg-black/80 flex items-center justify-center hidden-ui">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 text-center min-w-[300px]">
+            <h2 class="text-2xl font-bold text-white mb-6">Jogo Pausado</h2>
+            <button onclick="uiManager.hideMenu('pauseMenu')" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl mb-4">Continuar</button>
+            <button onclick="game.resetSave()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl">Zerar Progresso</button>
+        </div>
+    </div>
+
+    <!-- Loja de Melhorias (Tycoon) -->
+    <div id="upgradesMenu" class="ui-layer interactive-ui bg-black/80 flex items-center justify-center hidden-ui">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 w-11/12 max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-2xl">
+                <h2 class="text-2xl font-bold text-white flex items-center"><span class="mr-2">🛠️</span> Setor de Engenharia</h2>
+                <div class="text-green-400 font-bold bg-gray-800 px-4 py-2 rounded-lg"><span id="upgradesCredits">0</span> Cr</div>
+                <button onclick="uiManager.hideMenu('upgradesMenu')" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1" id="upgradesList">
+                <!-- Populado via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hub de Minigames -->
+    <div id="minigameHub" class="ui-layer interactive-ui bg-black/80 flex items-center justify-center hidden-ui">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 max-w-lg w-full text-center">
+            <h2 class="text-2xl font-bold text-white mb-6">Centro de Treinamento</h2>
+            <div class="grid gap-4">
+                <button onclick="minigames.startDescarte()" class="bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 px-6 rounded-xl text-left flex items-center justify-between transition">
+                    <div>
+                        <div class="text-lg">⏱️ Desafio do Descarte</div>
+                        <div class="text-xs text-orange-200 font-normal">Classifique resíduos contra o relógio.</div>
+                    </div>
+                    <span class="text-2xl">👉</span>
+                </button>
+                <button onclick="minigames.startQuiz()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl text-left flex items-center justify-between transition">
+                    <div>
+                        <div class="text-lg">📝 Quiz de Conhecimentos</div>
+                        <div class="text-xs text-blue-200 font-normal">Teste sua base teórica.</div>
+                    </div>
+                    <span class="text-2xl">👉</span>
+                </button>
+            </div>
+            <button onclick="uiManager.hideMenu('minigameHub')" class="mt-6 text-gray-400 hover:text-white underline">Voltar ao Trabalho</button>
+        </div>
+    </div>
+
+    <!-- Interface: Desafio do Descarte -->
+    <div id="descarteGame" class="ui-layer interactive-ui bg-gray-900 flex flex-col items-center justify-center hidden-ui">
+        <div class="w-full max-w-3xl p-6">
+            <div class="flex justify-between items-center mb-8 bg-gray-800 p-4 rounded-xl border border-gray-700">
+                <div class="text-xl font-bold text-white">Pontos: <span id="descScore" class="text-green-400">0</span></div>
+                <div class="text-2xl font-bold text-white">Tempo: <span id="descTimer" class="text-orange-400">20</span>s</div>
+                <button onclick="minigames.endDescarte()" class="text-red-400 font-bold hover:text-red-300">Sair</button>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-2xl text-center mb-8 transform transition" id="descCard">
+                <div class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-2">Item para descarte:</div>
+                <div id="descItemName" class="text-3xl font-extrabold text-gray-800 mb-4">Agulha usada</div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <button onclick="minigames.checkDescarte('A')" class="bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-xl text-lg transition flex flex-col items-center">
+                    <span class="text-2xl mb-1">A</span> <span class="text-xs font-normal">Biológico</span>
+                </button>
+                <button onclick="minigames.checkDescarte('B')" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-4 rounded-xl text-lg transition flex flex-col items-center">
+                    <span class="text-2xl mb-1">B</span> <span class="text-xs font-normal">Químico</span>
+                </button>
+                <button onclick="minigames.checkDescarte('C')" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl text-lg transition flex flex-col items-center">
+                    <span class="text-2xl mb-1">C</span> <span class="text-xs font-normal">Radioativo</span>
+                </button>
+                <button onclick="minigames.checkDescarte('D')" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-4 rounded-xl text-lg transition flex flex-col items-center">
+                    <span class="text-2xl mb-1">D</span> <span class="text-xs font-normal">Comum</span>
+                </button>
+                <button onclick="minigames.checkDescarte('E')" class="bg-yellow-500 hover:bg-yellow-400 text-white font-bold py-4 rounded-xl text-lg transition flex flex-col items-center">
+                    <span class="text-2xl mb-1">E</span> <span class="text-xs font-normal">Perfuro.</span>
+                </button>
+            </div>
+            <div id="descFeedback" class="mt-6 text-center text-xl font-bold h-8"></div>
+        </div>
+    </div>
+
+    <!-- Interface: Quiz -->
+    <div id="quizGame" class="ui-layer interactive-ui bg-blue-900/95 flex flex-col items-center justify-center hidden-ui">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl w-11/12">
+            <div class="flex justify-between text-gray-500 font-bold mb-4 text-sm border-b pb-2">
+                <span id="quizCategory">Biologia</span>
+                <span>Questão <span id="quizProgress">1/10</span></span>
+            </div>
+            <h3 id="quizQuestion" class="text-xl md:text-2xl font-bold text-gray-800 mb-6">Pergunta vai aqui?</h3>
+            <div id="quizOptions" class="grid gap-3 mb-6">
+                <!-- Botões gerados via JS -->
+            </div>
+            <div id="quizExplanation" class="hidden bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-blue-900 text-sm"></div>
+            <div class="flex justify-between items-center">
+                <div class="font-bold text-gray-700">Pontos: <span id="quizScore" class="text-blue-600">0</span></div>
+                <button id="quizNextBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition">Próxima</button>
+                <button onclick="minigames.endQuiz()" class="text-gray-400 hover:text-gray-600 underline text-sm">Encerrar Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface: Central de Triagem (Descarregamento) -->
+    <div id="triagemMenu" class="ui-layer interactive-ui bg-black/90 flex flex-col items-center justify-center hidden-ui">
+        <div class="bg-gray-800 p-6 rounded-2xl max-w-4xl w-11/12 border-2 border-green-500 flex flex-col max-h-[90vh]">
+            <h2 class="text-2xl font-bold text-white mb-2 text-center">Central de Triagem</h2>
+            <p class="text-gray-400 text-center mb-6 text-sm">Encaminhe os resíduos coletados para o tratamento correto para maximizar seus ganhos.</p>
+            
+            <div class="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+                <!-- Inventário do Caminhão -->
+                <div class="w-full md:w-1/3 bg-gray-900 rounded-xl p-4 overflow-y-auto custom-scrollbar flex flex-col">
+                    <h3 class="text-white font-bold mb-4 border-b border-gray-700 pb-2">Carga (<span id="triagemLoadCount">0</span>)</h3>
+                    <div id="triagemItems" class="flex flex-col gap-2 flex-1">
+                        <!-- Itens via JS -->
+                    </div>
+                </div>
+
+                <!-- Setores de Destino -->
+                <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-red-900/50 border border-red-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-red-800/50 transition" onclick="central.processItem('A')">
+                        <div class="text-3xl mb-2">🔥</div>
+                        <div class="text-red-400 font-bold">Incineração (A)</div>
+                        <div class="text-xs text-gray-400 mt-1">Risco Biológico</div>
+                    </div>
+                    <div class="bg-orange-900/50 border border-orange-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-orange-800/50 transition" onclick="central.processItem('B')">
+                        <div class="text-3xl mb-2">🧪</div>
+                        <div class="text-orange-400 font-bold">Aterro Ind. / Tratamento (B)</div>
+                        <div class="text-xs text-gray-400 mt-1">Risco Químico</div>
+                    </div>
+                    <div class="bg-purple-900/50 border border-purple-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-purple-800/50 transition" onclick="central.processItem('C')">
+                        <div class="text-3xl mb-2">☢️</div>
+                        <div class="text-purple-400 font-bold">Decaimento (C)</div>
+                        <div class="text-xs text-gray-400 mt-1">Risco Radioativo</div>
+                    </div>
+                    <div class="bg-gray-700/50 border border-gray-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-gray-600/50 transition" onclick="central.processItem('D')">
+                        <div class="text-3xl mb-2">♻️</div>
+                        <div class="text-gray-300 font-bold">Reciclagem / Aterro (D)</div>
+                        <div class="text-xs text-gray-400 mt-1">Resíduo Comum</div>
+                    </div>
+                    <div class="bg-yellow-900/50 border border-yellow-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-yellow-800/50 transition" onclick="central.processItem('E')">
+                        <div class="text-3xl mb-2">📦</div>
+                        <div class="text-yellow-400 font-bold">Descartex / Tratamento (E)</div>
+                        <div class="text-xs text-gray-400 mt-1">Perfurocortante</div>
+                    </div>
+                    <div class="bg-green-900/50 border border-green-500 p-4 rounded-xl text-center flex flex-col justify-center cursor-pointer hover:bg-green-800/50 transition" onclick="central.autoProcess()">
+                        <div class="text-3xl mb-2">⚡</div>
+                        <div class="text-green-400 font-bold">Processar Rápido</div>
+                        <div class="text-xs text-gray-400 mt-1">Menos Créditos</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-between items-center">
+                <div id="triagemFeedback" class="text-white font-bold h-6"></div>
+                <button onclick="uiManager.hideMenu('triagemMenu')" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg transition">Sair da Central</button>
+        
