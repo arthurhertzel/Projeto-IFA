@@ -1,0 +1,2691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Resíduos de Saúde: Descarte que Protege — Edição Tycoon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            touch-action: none;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .interactive-ui { pointer-events: auto; }
+        .hidden-ui { display: none !important; }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(56, 189, 248, 0.5); box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); }
+            50% { border-color: rgba(56, 189, 248, 1); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+        }
+        .mission-active { animation: pulse-border 2.5s infinite; }
+
+        @keyframes float-badge {
+            0%, 100% { transform: translate(-50%, 0px); }
+            50% { transform: translate(-50%, -4px); }
+        }
+        .hint-anim { animation: float-badge 1.8s ease-in-out infinite; }
+
+        #mobileControls {
+            position: absolute;
+            bottom: 24px;
+            left: 0;
+            width: 100%;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 28px;
+            pointer-events: none;
+            z-index: 20;
+        }
+        @media (max-width: 900px), (pointer: coarse) {
+            #mobileControls { display: flex; }
+            .desktop-only { display: none !important; }
+        }
+        .joystick-base {
+            width: 124px;
+            height: 124px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 3px solid rgba(148, 163, 184, 0.45);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+        .joystick-stick {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #38bdf8, #2563eb);
+            border: 2px solid rgba(255,255,255,0.8);
+            border-radius: 50%;
+            position: absolute;
+            top: 33px;
+            left: 33px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .action-btn {
+            width: 88px;
+            height: 88px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            color: white;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            border: 4px solid rgba(255,255,255,0.45);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45);
+            transition: transform 0.1s;
+        }
+        .action-btn:active {
+            transform: scale(0.92);
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); border-radius: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.6); border-radius: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
+
+        #mobileTopActions, #mobileDrawer, #minimapToggle { display: none; }
+        @media (max-width: 900px), (pointer: coarse) {
+            #hudLayer > .flex.flex-wrap.justify-between { padding: max(6px, env(safe-area-inset-top)) 7px 6px; gap: 6px; align-items: flex-start; }
+            #companyStatus { min-width: 0; width: auto; max-width: calc(100vw - 118px); padding: 6px 8px; border-radius: 12px; gap: 3px; }
+            #companyStatus .status-main { gap: 8px; }
+            #companyStatus .credits { font-size: 12px; }
+            #companyStatus .credits > span:first-child { font-size: 12px; margin-right: 2px; }
+            #companyStatus .level-badge { padding: 1px 5px; font-size: 10px; }
+            #companyStatus .xp-wrap { height: 4px; }
+            #companyStatus .status-meta { font-size: 9px; gap: 6px; }
+            #companyStatus .status-bottom { margin-top: 0; padding-top: 3px; font-size: 10px; gap: 7px; }
+            #hudVehicleBadge { display: none; }
+            #missionArea { position: absolute; top: max(48px, calc(env(safe-area-inset-top) + 42px)); left: 50%; transform: translateX(-50%); align-items: center; width: min(92vw, 430px); z-index: 25; pointer-events: none; }
+            #missionPanel { width: auto; max-width: 92vw; padding: 5px 8px; border-width: 1px; border-radius: 999px; text-align: center; pointer-events: auto; animation: none; }
+            #missionPanel .mission-label, #hudFactoryLvlBadge, #hudMissionDesc { display: none; }
+            #missionPanel #hudMissionTitle { font-size: 11px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 74vw; display: inline-block; vertical-align: middle; }
+            #missionPanel #missionToggle { display: inline-flex; }
+            #missionPanel.expanded { border-radius: 14px; width: min(92vw, 430px); padding: 8px 10px; text-align: left; }
+            #missionPanel.expanded .mission-label { display: flex; margin-bottom: 3px; }
+            #missionPanel.expanded #hudFactoryLvlBadge { display: inline-block; }
+            #missionPanel.expanded #hudMissionTitle { display: block; white-space: normal; max-width: none; font-size: 12px; }
+            #missionPanel.expanded #hudMissionDesc { display: block; font-size: 10px; margin-top: 3px; }
+            #desktopQuickActions { display: none; }
+            #mobileTopActions { display: flex; position: absolute; top: max(7px, env(safe-area-inset-top)); right: 7px; gap: 5px; z-index: 28; pointer-events: auto; }
+            #mobileTopActions button { min-height: 34px; padding: 6px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; }
+            #mobileDrawer { display: block; position: absolute; inset: 0; z-index: 55; pointer-events: none; visibility: hidden; }
+            #mobileDrawer.open { pointer-events: auto; visibility: visible; }
+            #mobileDrawerBackdrop { position: absolute; inset: 0; background: rgba(2,6,23,.48); opacity: 0; transition: opacity .18s ease; }
+            #mobileDrawerPanel { position: absolute; top: 0; right: 0; width: min(76vw, 280px); height: 100%; padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); background: rgba(15,23,42,.97); border-left: 1px solid rgba(100,116,139,.6); transform: translateX(102%); transition: transform .2s ease; box-shadow: -14px 0 35px rgba(0,0,0,.35); }
+            #mobileDrawer.open #mobileDrawerBackdrop { opacity: 1; }
+            #mobileDrawer.open #mobileDrawerPanel { transform: translateX(0); }
+            #mobileDrawerPanel .drawer-btn { width: 100%; padding: 10px 11px; border-radius: 11px; text-align: left; font-size: 12px; font-weight: 800; margin-top: 7px; background: rgba(30,41,59,.92); border: 1px solid rgba(100,116,139,.45); color: white; }
+            #mobileControls { bottom: max(12px, env(safe-area-inset-bottom)); padding: 0 16px; align-items: flex-end; }
+            .joystick-base { width: 99px; height: 99px; opacity: .5; transition: opacity .12s ease, transform .12s ease; }
+            .joystick-stick { width: 42px; height: 42px; top: 26px; left: 26px; }
+            .action-btn { width: 70px; height: 70px; font-size: 11px; border-width: 3px; opacity: .5; transition: opacity .12s ease, transform .1s ease; }
+            .action-btn .text-xl { font-size: 16px; }
+            .joystick-base.is-active, .action-btn.is-active { opacity: .9; }
+            #interactionHint { bottom: 92px; max-width: min(72vw, 360px); padding: 7px 9px; border-radius: 12px; }
+            #interactionHint #hintIcon { font-size: 16px; padding: 5px; }
+            #interactionHint #hintTitle { font-size: 11px; }
+            #interactionHint #hintSubtitle { font-size: 9px; }
+            #minimapToggle { display: flex; position: absolute; left: 16px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 108px); z-index: 27; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 9px; background: rgba(15,23,42,.82); border: 1px solid rgba(100,116,139,.7); color: white; font-size: 13px; pointer-events: auto; backdrop-filter: blur(5px); }
+            #minimapToggle.collapsed { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 108px); width: 36px; height: 36px; font-size: 17px; }
+        }
+        @media (max-width: 900px) and (orientation: landscape) {
+            #missionArea { top: max(7px, env(safe-area-inset-top)); width: min(58vw, 430px); }
+            #missionPanel #hudMissionTitle { max-width: 48vw; }
+            #mobileControls { padding: 0 22px; bottom: max(8px, env(safe-area-inset-bottom)); }
+            .joystick-base { width: 88px; height: 88px; }
+            .joystick-stick { width: 38px; height: 38px; top: 23px; left: 23px; }
+            .action-btn { width: 64px; height: 64px; }
+            #interactionHint { bottom: 72px; }
+            #minimapToggle { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 96px); }
+        }
+
+        #mainMenu { background: radial-gradient(circle at 50% 20%, rgba(16,185,129,.16), transparent 34%), linear-gradient(180deg,#07111f 0%,#0b1220 55%,#050914 100%) !important; }
+        .start-shell { width:min(920px,94vw); min-height:min(590px,88vh); display:grid; grid-template-columns:1.15fr .85fr; overflow:hidden; border:1px solid rgba(148,163,184,.22); border-radius:28px; background:rgba(7,15,28,.94); box-shadow:0 28px 80px rgba(0,0,0,.55); position:relative; }
+        .start-hero { padding:46px; display:flex; flex-direction:column; justify-content:center; text-align:left; position:relative; overflow:hidden; }
+        .start-hero:after { content:''; position:absolute; width:310px; height:310px; border:48px solid rgba(16,185,129,.07); border-radius:50%; right:-130px; bottom:-150px; }
+        .start-mark { width:58px; height:58px; display:grid; place-items:center; border-radius:18px; background:#10b981; color:#04120d; font-size:30px; box-shadow:0 12px 34px rgba(16,185,129,.25); }
+        .start-kicker { margin-top:24px; color:#34d399; font:800 11px Inter; letter-spacing:.18em; text-transform:uppercase; }
+        .start-title { margin:7px 0 0; color:#fff; font:900 clamp(34px,5vw,58px)/.94 Inter; letter-spacing:-.055em; }
+        .start-title span { color:#38bdf8; }
+        .start-copy { max-width:520px; margin-top:18px; color:#94a3b8; font:500 13px/1.65 Inter; }
+        .start-side { padding:34px; background:linear-gradient(180deg,rgba(15,23,42,.82),rgba(15,23,42,.46)); border-left:1px solid rgba(148,163,184,.14); display:flex; flex-direction:column; justify-content:center; gap:12px; }
+        .start-stat { display:flex; align-items:center; gap:12px; padding:13px; border-radius:15px; background:rgba(15,23,42,.75); border:1px solid rgba(148,163,184,.13); color:#cbd5e1; font-size:12px; }
+        .start-stat b { display:block; color:white; font-size:13px; }
+        .start-primary { margin-top:10px; width:100%; padding:14px 16px; border-radius:15px; background:#10b981; color:#052e22; font-weight:900; box-shadow:0 12px 30px rgba(16,185,129,.2); }
+        .start-secondary { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+        .start-secondary button { padding:11px; border-radius:13px; background:#172033; color:#dbeafe; border:1px solid #334155; font-size:12px; font-weight:800; }
+        .start-tip { margin-top:4px; color:#64748b; font-size:10px; line-height:1.5; text-align:center; }
+        @media(max-width:700px){ .start-shell{grid-template-columns:1fr; max-height:92vh; overflow:auto}.start-hero{padding:28px 26px 18px}.start-side{padding:18px 26px 26px;border-left:0;border-top:1px solid rgba(148,163,184,.14)}.start-title{font-size:38px}.start-copy{font-size:12px;margin-top:12px}.start-stat{display:none}.start-kicker{margin-top:15px} }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- CAMADA HUD -->
+    <div id="hudLayer" class="ui-layer hidden-ui z-10">
+        <!-- Barra Superior -->
+        <div class="flex flex-wrap justify-between items-start gap-2 p-3 md:p-4">
+            <!-- Painel de Status da Empresa -->
+            <div id="companyStatus" class="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 p-3 rounded-2xl shadow-2xl interactive-ui flex flex-col gap-1.5 min-w-[230px]">
+                <div class="status-main flex items-center justify-between gap-4">
+                    <div class="credits text-emerald-400 font-black text-xl flex items-center tracking-tight">
+                        <span class="mr-1.5 text-lg">💰</span> <span id="hudCredits">0</span> <span class="text-xs font-bold ml-1 text-emerald-300">Cr</span>
+                    </div>
+                    <div class="level-badge bg-slate-800 border border-slate-700 px-2.5 py-0.5 rounded-full text-xs font-bold text-amber-400 flex items-center gap-1">
+                        ⭐ Nv. <span id="hudLevel">1</span>
+                    </div>
+                </div>
+
+                <!-- Barra de XP -->
+                <div class="xp-wrap w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700/60">
+                    <div id="hudXPBar" class="bg-gradient-to-r from-sky-500 to-indigo-500 h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="status-meta flex justify-between text-[11px] text-slate-400 font-medium">
+                    <span>XP: <span id="hudXP">0</span> / <span id="hudNextXP">100</span></span>
+                    <span>Eficiência: <span id="hudEfficiency" class="text-emerald-400 font-bold">100%</span></span>
+                </div>
+
+                <!-- Capacidade e Veículo -->
+                <div class="status-bottom mt-1 pt-1.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-200">
+                    <div class="flex items-center gap-1.5">
+                        <span>📦 Carga:</span>
+                        <span id="hudLoad" class="font-extrabold text-white">0</span>/<span id="hudCapacity" class="font-bold text-slate-400">5</span>
+                    </div>
+                    <div id="hudVehicleBadge" class="bg-sky-950/90 text-sky-300 border border-sky-800/80 px-2 py-0.5 rounded text-[11px] font-semibold">
+                        🚶 Agente EPI
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Missão Ativa + Atalhos Rápidos -->
+            <div id="missionArea" class="flex flex-col items-end gap-2">
+                <div id="missionPanel" class="bg-slate-900/90 backdrop-blur-md border-2 border-sky-500/80 p-3 rounded-2xl shadow-2xl max-w-xs sm:max-w-sm text-right interactive-ui mission-active" onclick="toggleMissionDetails(event)">
+                    <div class="mission-label flex items-center justify-end gap-1.5 text-sky-400 font-extrabold text-[11px] uppercase tracking-wider mb-0.5">
+                        <span>🎯 Missão Ativa</span>
+                        <span id="hudFactoryLvlBadge" class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-1.5 py-0.2 rounded text-[10px]">Central Nv. 1</span>
+                    </div>
+                    <div class="flex items-center justify-end gap-1"><div id="hudMissionTitle" class="text-white font-extrabold text-sm leading-snug">Carregando...</div><button id="missionToggle" type="button" class="hidden ml-1 text-sky-300 text-xs font-black" aria-label="Expandir missão">▾</button></div>
+                    <div id="hudMissionDesc" class="text-slate-300 text-xs mt-0.5">Aguarde...</div>
+                </div>
+
+                <!-- Botões de Menu -->
+                <div id="desktopQuickActions" class="flex items-center gap-2 interactive-ui">
+                    <button onclick="uiManager.showMenu('inventoryModal')" title="Inspecionar Carga Coletada" class="bg-slate-800/95 hover:bg-slate-700 text-white px-3 py-2 rounded-xl shadow-lg border border-slate-600 transition flex items-center gap-1.5 text-xs font-bold">
+                        <span>🎒</span> <span class="hidden sm:inline">Carga</span>
+                    </button>
+                    <button onclick="uiManager.showMenu('upgradesMenu')" title="Central de Engenharia e Frota" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded-xl shadow-lg border border-amber-400/40 transition flex items-center gap-1.5 text-xs font-bold">
+                        <span>🏭</span> <span class="hidden sm:inline">Melhorias</span>
+                    </button>
+                    <button onclick="uiManager.showMenu('minigameHub')" title="Centro de Treinamento e Minigames" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-xl shadow-lg border border-purple-400/40 transition flex items-center gap-1.5 text-xs font-bold">
+                        <span>🎮</span> <span class="hidden sm:inline">Treino</span>
+                    </button>
+                    <button onclick="uiManager.showMenu('learnMenu')" title="Guia Técnico e Material de Estudo" class="bg-teal-600 hover:bg-teal-500 text-white px-3 py-2 rounded-xl shadow-lg border border-teal-400/40 transition flex items-center gap-1.5 text-xs font-bold">
+                        <span>📚</span> <span class="hidden sm:inline">Guia</span>
+                    </button>
+                    <button onclick="soundFX.toggleMute()" id="muteBtn" title="Ativar/Desativar Sons" class="bg-slate-800/95 hover:bg-slate-700 text-white p-2 rounded-xl shadow-lg border border-slate-600 transition text-sm">
+                        🔊
+                    </button>
+                    <button onclick="uiManager.showMenu('pauseMenu')" title="Pausar Jogo (ESC)" class="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-xl shadow-lg border border-slate-500 transition text-sm">
+                        ⏸️
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de Notificações Flutuantes -->
+        <div id="notificationArea" class="absolute top-28 left-1/2 transform -translate-x-1/2 text-center pointer-events-none flex flex-col items-center gap-1 z-30"></div>
+
+        <!-- Indicador de Proximidade e Interação Contextual -->
+        <div id="interactionHint" class="absolute bottom-32 md:bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-900/95 text-white px-5 py-3 rounded-2xl border-2 border-emerald-400 shadow-2xl hidden-ui interactive-ui hint-anim max-w-md w-11/12 sm:w-auto cursor-pointer" onclick="interact()">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="hintIcon" class="text-2xl bg-slate-800 p-2 rounded-xl border border-slate-700">📦</div>
+                    <div class="text-left">
+                        <div id="hintTitle" class="font-extrabold text-sm text-emerald-300">Item Detectado</div>
+                        <div id="hintSubtitle" class="text-xs text-slate-300">Descrição curta do objeto</div>
+                    </div>
+                </div>
+                <div class="bg-emerald-500 text-slate-950 font-black px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shadow">
+                    [E] / AÇÃO
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobileTopActions">
+        <button onclick="uiManager.showMenu('inventoryModal')" class="bg-slate-800/95 text-white border border-slate-600 shadow-lg">🎒 Carga</button>
+        <button onclick="toggleMobileDrawer(true)" class="bg-slate-800/95 text-white border border-slate-600 shadow-lg" aria-label="Abrir menu">☰</button>
+    </div>
+
+    <div id="mobileDrawer" class="interactive-ui">
+        <div id="mobileDrawerBackdrop" onclick="toggleMobileDrawer(false)"></div>
+        <div id="mobileDrawerPanel">
+            <div class="flex items-center justify-between mb-2 text-white font-black text-sm"><span>Menu rápido</span><button onclick="toggleMobileDrawer(false)" class="text-xl px-2">×</button></div>
+            <button class="drawer-btn" onclick="openDrawerMenu('inventoryModal')">🎒 Carga / Inventário</button>
+            <button class="drawer-btn" onclick="openDrawerMenu('upgradesMenu')">🏭 Melhorias</button>
+            <button class="drawer-btn" onclick="openDrawerMenu('minigameHub')">🎮 Treino</button>
+            <button class="drawer-btn" onclick="openDrawerMenu('learnMenu')">📚 Guia técnico</button>
+            <button class="drawer-btn" onclick="soundFX.toggleMute(); syncDrawerSound()" id="drawerMuteBtn">🔊 Som</button>
+            <button class="drawer-btn" onclick="openDrawerMenu('pauseMenu')">⏸️ Pausa</button>
+        </div>
+    </div>
+
+    <button id="minimapToggle" onclick="toggleMinimap()" aria-label="Minimizar mapa">➖</button>
+
+    <!-- CONTROLES MOBILE -->
+    <div id="mobileControls" class="hidden-ui">
+        <div class="joystick-base" id="joystickBase">
+            <div class="joystick-stick" id="joystickStick"></div>
+        </div>
+        <button class="action-btn" id="actionBtn">
+            <span class="text-xl mb-0.5">⚡</span>
+            <span>AÇÃO</span>
+        </button>
+    </div>
+
+    <!-- MENU PRINCIPAL -->
+    <div id="mainMenu" class="ui-layer interactive-ui flex items-center justify-center p-3 z-40">
+        <div class="start-shell">
+            <section class="start-hero">
+                <div class="start-mark">☣</div>
+                <div class="start-kicker">Operação RSS • Simulador de campo</div>
+                <h1 class="start-title">DESCARTE<br><span>QUE PROTEGE</span></h1>
+                <p class="start-copy">Assuma uma operação de coleta de resíduos de saúde pela cidade. Localize pontos de coleta, transporte a carga e faça a triagem correta dos Grupos A, B, C, D e E.</p>
+            </section>
+            <aside class="start-side">
+                <div class="start-stat"><span class="text-2xl">🧭</span><div><b>Orientação inteligente</b>O GPS indica o próximo objetivo até você dominar o mapa.</div></div>
+                <div class="start-stat"><span class="text-2xl">🧪</span><div><b>Resíduos identificáveis</b>Cada material ganhou uma silhueta própria no cenário.</div></div>
+                <div class="start-stat"><span class="text-2xl">🏭</span><div><b>Coleta → transporte → triagem</b>Aprenda jogando, sem encher a tela de tutorial.</div></div>
+                <button onclick="game.start()" class="start-primary">INICIAR EXPEDIENTE&nbsp; →</button>
+                <div class="start-secondary">
+                    <button onclick="uiManager.showMenu('learnMenu')">📚 GUIA TÉCNICO</button>
+                    <button onclick="game.resetSave()">↻ NOVO JOGO</button>
+                </div>
+                <div class="start-tip">WASD / setas no computador • analógico + AÇÃO no celular</div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- MENU DE PAUSA -->
+    <div id="pauseMenu" class="ui-layer interactive-ui bg-slate-950/85 backdrop-blur-sm flex items-center justify-center hidden-ui z-40 p-4">
+        <div class="bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-700 text-center max-w-sm w-full">
+            <div class="text-3xl mb-2">⏸️</div>
+            <h2 class="text-2xl font-black text-white mb-2">Expediente Pausado</h2>
+            <p class="text-xs text-slate-400 mb-6">Seu progresso é salvo automaticamente no navegador.</p>
+            <div class="space-y-3">
+                <button onclick="uiManager.hideMenu('pauseMenu')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg transition">
+                    ▶️ Retomar Operação
+                </button>
+                <button onclick="uiManager.hideMenu('pauseMenu'); uiManager.showMenu('learnMenu')" class="w-full bg-sky-700 hover:bg-sky-600 text-white font-bold py-3 rounded-xl transition">
+                    📚 Consultar Material de Estudo
+                </button>
+                <button onclick="game.resetSave()" class="w-full bg-rose-900/80 hover:bg-rose-700 text-rose-200 font-bold py-2.5 rounded-xl border border-rose-700 text-sm transition">
+                    🔄 Zerar Jogo (Reiniciar Progresso)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE INSPEÇÃO DE CARGA (INVENTÁRIO) -->
+    <div id="inventoryModal" class="ui-layer interactive-ui bg-slate-950/85 backdrop-blur-sm flex items-center justify-center hidden-ui z-40 p-4">
+        <div class="bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-xl max-h-[85vh] flex flex-col">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60 rounded-t-3xl">
+                <div>
+                    <h2 class="text-xl font-black text-white flex items-center gap-2">🎒 Manifesto de Carga Coletada</h2>
+                    <p class="text-xs text-slate-400">Consulte as características físicas dos itens antes de classificá-los na Central.</p>
+                </div>
+                <button onclick="uiManager.hideMenu('inventoryModal')" class="text-slate-400 hover:text-white text-2xl font-bold px-2">&times;</button>
+            </div>
+            <div id="inventoryList" class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-2.5"></div>
+            <div class="p-4 border-t border-slate-800 bg-slate-950/60 rounded-b-3xl flex justify-between items-center">
+                <div class="text-xs text-slate-400">Leve os resíduos até a <strong>Doca de Recebimento da Central</strong> para tratamento.</div>
+                <button onclick="uiManager.hideMenu('inventoryModal')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-5 rounded-xl text-sm">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MENU DE MELHORIAS, FROTA E EXPANSÃO DA CIDADE -->
+    <div id="upgradesMenu" class="ui-layer interactive-ui bg-slate-950/85 backdrop-blur-sm flex items-center justify-center hidden-ui z-40 p-4">
+        <div class="bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="p-5 border-b border-slate-800 flex flex-wrap justify-between items-center gap-2 bg-slate-950/80 rounded-t-3xl">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">🏭 Engenharia, Frota & Expansão</h2>
+                    <p class="text-xs text-slate-400">Amplie sua Central de Gerenciamento, adquira veículos e desbloqueie novos setores urbanos.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-emerald-400 font-black bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-sm">
+                        💰 <span id="upgradesCredits">0</span> Cr
+                    </div>
+                    <button onclick="uiManager.hideMenu('upgradesMenu')" class="text-slate-400 hover:text-white text-2xl font-bold px-2">&times;</button>
+                </div>
+            </div>
+            <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4" id="upgradesList"></div>
+        </div>
+    </div>
+
+    <!-- CENTRAL DE TRIAGEM E TRATAMENTO (CORE GAMEPLAY) -->
+    <div id="triagemMenu" class="ui-layer interactive-ui bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center hidden-ui z-40 p-3 sm:p-4">
+        <div class="bg-slate-900 p-4 sm:p-6 rounded-3xl max-w-5xl w-full border-2 border-emerald-500/80 shadow-2xl flex flex-col max-h-[94vh]">
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🏭</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-white">Central de Triagem e Tratamento de RSS</h2>
+                        <span id="triagemFacilityBadge" class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-bold">Nível 1</span>
+                    </div>
+                    <p class="text-slate-400 text-xs mt-0.5">Identifique o grupo correto (RDC 222/2018) e encaminhe o resíduo ao processo de tratamento e destinação adequado.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="uiManager.hideMenu('triagemMenu'); uiManager.showMenu('upgradesMenu')" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+                        🛠️ Evoluir Central
+                    </button>
+                    <button onclick="uiManager.hideMenu('triagemMenu')" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
+                        Sair da Doca
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden">
+                <!-- Coluna Esquerda: Item em Análise + Fila -->
+                <div class="w-full lg:w-5/12 bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col overflow-hidden">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+                        <h3 class="text-white font-bold text-sm flex items-center gap-1.5">
+                            <span>🔬</span> Bancada de Inspeção
+                        </h3>
+                        <span class="text-xs font-bold text-sky-400 bg-sky-950/80 px-2.5 py-0.5 rounded-full border border-sky-800">
+                            Fila: <span id="triagemLoadCount">0</span> itens
+                        </span>
+                    </div>
+
+                    <!-- Card do Item Atual -->
+                    <div id="triagemActiveCard" class="mb-3"></div>
+
+                    <!-- Fila de Espera -->
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Próximos na Caçamba:</div>
+                    <div id="triagemQueue" class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1"></div>
+                </div>
+
+                <!-- Coluna Direita: Setores de Tratamento (Grupos A, B, C, D, E) -->
+                <div class="w-full lg:w-7/12 flex flex-col justify-between overflow-y-auto custom-scrollbar pr-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <!-- Grupo A -->
+                        <button onclick="central.processItem('A')" class="bg-rose-950/50 hover:bg-rose-900/70 border-2 border-rose-500/80 p-3.5 rounded-2xl text-left transition flex items-start gap-3 group">
+                            <div class="text-3xl bg-rose-900/60 p-2.5 rounded-xl border border-rose-500/40 group-hover:scale-105 transition">🩸</div>
+                            <div>
+                                <div class="text-rose-300 font-black text-sm flex items-center gap-1.5">
+                                    <span>GRUPO A — Biológico</span>
+                                    <span class="text-[10px] bg-rose-500 text-white px-1.5 py-0.2 rounded font-bold">Infectante</span>
+                                </div>
+                                <div class="text-xs text-slate-300 font-semibold mt-0.5">Autoclavagem / Incineração</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 leading-snug">Sangue, secreções, culturas, curativos e tecidos com risco biológico.</div>
+                            </div>
+                        </button>
+
+                        <!-- Grupo B -->
+                        <button onclick="central.processItem('B')" class="bg-orange-950/50 hover:bg-orange-900/70 border-2 border-orange-500/80 p-3.5 rounded-2xl text-left transition flex items-start gap-3 group">
+                            <div class="text-3xl bg-orange-900/60 p-2.5 rounded-xl border border-orange-500/40 group-hover:scale-105 transition">🧪</div>
+                            <div>
+                                <div class="text-orange-300 font-black text-sm flex items-center gap-1.5">
+                                    <span>GRUPO B — Químico</span>
+                                    <span class="text-[10px] bg-orange-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">Perigoso</span>
+                                </div>
+                                <div class="text-xs text-slate-300 font-semibold mt-0.5">Neutralização / Aterro Classe I</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 leading-snug">Reagentes, solventes, medicamentos vencidos, tóxicos e inflamáveis.</div>
+                            </div>
+                        </button>
+
+                        <!-- Grupo C -->
+                        <button onclick="central.processItem('C')" class="bg-purple-950/50 hover:bg-purple-900/70 border-2 border-purple-500/80 p-3.5 rounded-2xl text-left transition flex items-start gap-3 group">
+                            <div class="text-3xl bg-purple-900/60 p-2.5 rounded-xl border border-purple-500/40 group-hover:scale-105 transition">☢️</div>
+                            <div>
+                                <div class="text-purple-300 font-black text-sm flex items-center gap-1.5">
+                                    <span>GRUPO C — Radioativo</span>
+                                    <span class="text-[10px] bg-purple-400 text-slate-950 px-1.5 py-0.2 rounded font-bold">CNEN</span>
+                                </div>
+                                <div class="text-xs text-slate-300 font-semibold mt-0.5">Blindagem e Decaimento</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 leading-snug">Radionuclídeos de medicina nuclear e radioterapia em caixas blindadas.</div>
+                            </div>
+                        </button>
+
+                        <!-- Grupo D -->
+                        <button onclick="central.processItem('D')" class="bg-sky-950/50 hover:bg-sky-900/70 border-2 border-sky-500/80 p-3.5 rounded-2xl text-left transition flex items-start gap-3 group">
+                            <div class="text-3xl bg-sky-900/60 p-2.5 rounded-xl border border-sky-500/40 group-hover:scale-105 transition">🗑️</div>
+                            <div>
+                                <div class="text-sky-300 font-black text-sm flex items-center gap-1.5">
+                                    <span>GRUPO D — Comum</span>
+                                    <span class="text-[10px] bg-sky-400 text-slate-950 px-1.5 py-0.2 rounded font-bold">Não Perigoso</span>
+                                </div>
+                                <div class="text-xs text-slate-300 font-semibold mt-0.5">Reciclagem / Aterro Sanitário</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 leading-snug">Papel de escritório, copos e embalagens sem qualquer contaminação.</div>
+                            </div>
+                        </button>
+
+                        <!-- Grupo E -->
+                        <button onclick="central.processItem('E')" class="bg-yellow-950/50 hover:bg-yellow-900/70 border-2 border-yellow-400/80 p-3.5 rounded-2xl text-left transition flex items-start gap-3 group sm:col-span-2">
+                            <div class="text-3xl bg-yellow-900/60 p-2.5 rounded-xl border border-yellow-400/40 group-hover:scale-105 transition">🪡</div>
+                            <div class="flex-1">
+                                <div class="text-yellow-300 font-black text-sm flex items-center gap-1.5">
+                                    <span>GRUPO E — Perfurocortante</span>
+                                    <span class="text-[10px] bg-yellow-400 text-slate-950 px-1.5 py-0.2 rounded font-bold">Caixa Rígida</span>
+                                </div>
+                                <div class="text-xs text-slate-300 font-semibold mt-0.5">Autoclavagem em Coletor Rígido (Descartex) + Disposição Segura</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 leading-snug">Agulhas, escalpes, lâminas de bisturi, lancetas e vidrarias quebradas contaminadas.</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Terceirização / Triagem Automatizada Auxiliar -->
+                    <div class="mt-3 pt-3 border-t border-slate-800 flex flex-wrap justify-between items-center gap-2">
+                        <button onclick="central.autoProcess()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 p-2.5 rounded-xl text-xs text-slate-200 font-bold flex items-center justify-between transition">
+                            <span class="flex items-center gap-2">
+                                <span>🤖</span>
+                                <span>Triagem Terceirizada Assistida (Separa por lote com taxa operacional de 50%)</span>
+                            </span>
+                            <span class="bg-slate-900 text-amber-400 px-2.5 py-1 rounded-lg border border-slate-700">Menor Lucro</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Feedback Educativo da Triagem -->
+            <div id="triagemFeedbackBox" class="mt-3 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm min-h-[54px] flex items-center justify-between">
+                <div id="triagemFeedback" class="text-slate-300 font-medium">Selecione o setor correspondente ao item exibido na bancada de inspeção.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUB DO CENTRO DE TREINAMENTO (MINIGAMES) -->
+    <div id="minigameHub" class="ui-layer interactive-ui bg-slate-950/85 backdrop-blur-sm flex items-center justify-center hidden-ui z-40 p-4">
+        <div class="bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-700 max-w-lg w-full text-center">
+            <div class="text-3xl mb-2">🎮</div>
+            <h2 class="text-2xl font-black text-white mb-1">Centro de Treinamento Técnico</h2>
+            <p class="text-xs text-slate-400 mb-6">Capacite sua equipe com simulações rápidas e ganhe créditos e XP extras.</p>
+            <div class="grid gap-3.5">
+                <button onclick="minigames.startDescarte()" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-4 px-5 rounded-2xl text-left flex items-center justify-between transition shadow-lg">
+                    <div>
+                        <div class="text-base sm:text-lg font-black">⏱️ Desafio Rápido de Segregação</div>
+                        <div class="text-xs text-amber-100 font-normal mt-0.5">Classifique resíduos nos 5 grupos contra o cronômetro.</div>
+                    </div>
+                    <span class="text-2xl">👉</span>
+                </button>
+                <button onclick="minigames.startQuiz()" class="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold py-4 px-5 rounded-2xl text-left flex items-center justify-between transition shadow-lg">
+                    <div>
+                        <div class="text-base sm:text-lg font-black">📝 Exame Interdisciplinar (Quiz)</div>
+                        <div class="text-xs text-sky-100 font-normal mt-0.5">Biologia, Química, Matemática e Normas da ANVISA.</div>
+                    </div>
+                    <span class="text-2xl">👉</span>
+                </button>
+            </div>
+            <button onclick="uiManager.hideMenu('minigameHub')" class="mt-6 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 px-6 rounded-xl text-sm transition">
+                Voltar à Cidade
+            </button>
+        </div>
+    </div>
+
+    <!-- MINIGAME 1: DESAFIO DO DESCARTE -->
+    <div id="descarteGame" class="ui-layer interactive-ui bg-slate-950/95 flex flex-col items-center justify-center hidden-ui z-40 p-4">
+        <div class="w-full max-w-3xl bg-slate-900 p-6 rounded-3xl border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-6 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                <div class="text-lg font-black text-white">Pontos: <span id="descScore" class="text-emerald-400">0</span></div>
+                <div class="text-xl font-black text-white">⏱️ <span id="descTimer" class="text-amber-400">30</span>s</div>
+                <button onclick="minigames.endDescarte(false)" class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 px-3 py-1.5 rounded-lg text-xs font-bold">Encerrar</button>
+            </div>
+
+            <div class="bg-slate-800 border-2 border-slate-600 p-6 sm:p-8 rounded-2xl text-center mb-6 transition transform" id="descCard">
+                <div class="text-sky-400 text-xs font-extrabold uppercase tracking-wider mb-1">Resíduo para Classificação Imediata:</div>
+                <div id="descItemIcon" class="text-4xl my-2">🩸</div>
+                <div id="descItemName" class="text-2xl sm:text-3xl font-black text-white mb-2">Gaze Contaminada</div>
+                <div id="descItemHint" class="text-xs text-slate-300">Curativo com presença de sangue humano.</div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <button onclick="minigames.checkDescarte('A')" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-3.5 rounded-xl transition flex flex-col items-center">
+                    <span class="text-xl font-black">Grupo A</span>
+                    <span class="text-[11px] font-medium">🩸 Biológico</span>
+                </button>
+                <button onclick="minigames.checkDescarte('B')" class="bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold py-3.5 rounded-xl transition flex flex-col items-center">
+                    <span class="text-xl font-black">Grupo B</span>
+                    <span class="text-[11px] font-semibold">🧪 Químico</span>
+                </button>
+                <button onclick="minigames.checkDescarte('C')" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl transition flex flex-col items-center">
+                    <span class="text-xl font-black">Grupo C</span>
+                    <span class="text-[11px] font-medium">☢️ Radioativo</span>
+                </button>
+                <button onclick="minigames.checkDescarte('D')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3.5 rounded-xl transition flex flex-col items-center">
+                    <span class="text-xl font-black">Grupo D</span>
+                    <span class="text-[11px] font-medium">🗑️ Comum</span>
+                </button>
+                <button onclick="minigames.checkDescarte('E')" class="col-span-2 sm:col-span-1 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold py-3.5 rounded-xl transition flex flex-col items-center">
+                    <span class="text-xl font-black">Grupo E</span>
+                    <span class="text-[11px] font-semibold">🪡 Perfuro.</span>
+                </button>
+            </div>
+            <div id="descFeedback" class="mt-5 text-center text-sm sm:text-base font-bold min-h-[28px] text-slate-300"></div>
+        </div>
+    </div>
+
+    <!-- MINIGAME 2: QUIZ DE CONHECIMENTOS -->
+    <div id="quizGame" class="ui-layer interactive-ui bg-slate-950/95 flex flex-col items-center justify-center hidden-ui z-40 p-4">
+        <div class="bg-slate-900 border border-slate-700 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-2xl w-full text-white">
+            <div class="flex justify-between items-center text-xs font-extrabold uppercase tracking-wider text-sky-400 mb-4 border-b border-slate-800 pb-3">
+                <span id="quizCategory" class="bg-sky-950 border border-sky-800 px-3 py-1 rounded-full">Biologia</span>
+                <span>Questão <span id="quizProgress">1/5</span></span>
+            </div>
+            <h3 id="quizQuestion" class="text-lg sm:text-xl font-bold text-white mb-5 leading-snug">Pergunta vai aqui?</h3>
+            <div id="quizOptions" class="grid gap-2.5 mb-5"></div>
+            <div id="quizExplanation" class="hidden bg-sky-950/80 border-l-4 border-sky-400 p-3.5 rounded-r-xl mb-5 text-sky-100 text-xs sm:text-sm leading-relaxed"></div>
+            <div class="flex justify-between items-center pt-2 border-t border-slate-800">
+                <div class="font-bold text-slate-300 text-sm">Pontuação: <span id="quizScore" class="text-emerald-400 font-black">0</span></div>
+                <div class="flex gap-3">
+                    <button id="quizNextBtn" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-5 rounded-xl text-sm transition">Próxima Questão ➔</button>
+                    <button onclick="minigames.endQuiz()" class="text-slate-400 hover:text-white text-xs underline">Sair</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACERVO ESCOLAR E GUIA TÉCNICO -->
+    <div id="learnMenu" class="ui-layer interactive-ui bg-slate-950/90 backdrop-blur-md flex items-center justify-center hidden-ui z-40 p-3 sm:p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col text-slate-200">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-teal-900/50 rounded-t-3xl">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">📚 Manual Técnico de Gerenciamento de RSS</h2>
+                    <p class="text-xs text-teal-200">Baseado na RDC nº 222/2018 da ANVISA e Resolução CONAMA nº 358/2005.</p>
+                </div>
+                <button onclick="uiManager.hideMenu('learnMenu')" class="text-teal-200 hover:text-white text-3xl font-bold px-2">&times;</button>
+            </div>
+            <div class="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5 text-xs sm:text-sm leading-relaxed">
+                <div class="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+                    <h3 class="text-teal-400 font-black text-base mb-1">1. O que são Resíduos de Serviços de Saúde (RSS)?</h3>
+                    <p class="text-slate-300">São todos os resíduos gerados em estabelecimentos prestadores de assistência à saúde humana ou animal: hospitais, clínicas médicas e odontológicas, laboratórios de análises, farmácias, centros de pesquisa e postos de vacinação. Embora representem uma fração menor do total de resíduos urbanos, exigem manejo rigoroso devido aos riscos biológicos, químicos, radiológicos e de acidentes perfurocortantes.</p>
+                </div>
+
+                <!-- Tabela dos 5 Grupos -->
+                <div>
+                    <h3 class="text-teal-400 font-black text-base mb-2.5">2. Classificação Oficial nos 5 Grupos</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-rose-950/30 border border-rose-800/60 p-3.5 rounded-2xl">
+                            <div class="font-black text-rose-400 mb-1">🩸 GRUPO A — Risco Biológico (Infectante)</div>
+                            <p class="text-slate-300 text-xs">Possui possível presença de agentes biológicos (bactérias, vírus, fungos, príons) que apresentam risco de infecção. <strong>Exemplos:</strong> gazes com sangue, tubos de coleta sanguínea, placas de Petri com culturas microbiológicas, bolsas transfusionais vazias ou com volume residual. <strong>Tratamento:</strong> Autoclavagem (vapor sob pressão) ou incineração licenciada antes da disposição final.</p>
+                        </div>
+                        <div class="bg-orange-950/30 border border-orange-800/60 p-3.5 rounded-2xl">
+                            <div class="font-black text-orange-400 mb-1">🧪 GRUPO B — Risco Químico</div>
+                            <p class="text-slate-300 text-xs">Contém substâncias químicas que apresentam inflamabilidade, corrosividade, reatividade ou toxicidade à saúde e ao meio ambiente. <strong>Exemplos:</strong> medicamentos vencidos ou interditados, reagentes de laboratório (xilol, formol), reveladores radiográficos e desinfetantes concentrados. <strong>Destinação:</strong> Tratamento químico específico, incineração industrial ou Aterro Industrial Classe I.</p>
+                        </div>
+                        <div class="bg-purple-950/30 border border-purple-800/60 p-3.5 rounded-2xl">
+                            <div class="font-black text-purple-400 mb-1">☢️ GRUPO C — Rejeitos Radioativos</div>
+                            <p class="text-slate-300 text-xs">Materiais resultantes de atividades com radionuclídeos em quantidades superiores aos limites de eliminação (medicina nuclear, radioterapia). <strong>Exemplos:</strong> seringas, frascos e luvas contaminadas com Tecnécio-99m ou Iodo-131. <strong>Manejo:</strong> Armazenamento em recipientes blindados com chumbo em sala de decaimento seguindo normas da CNEN até atingir níveis seguros.</p>
+                        </div>
+                        <div class="bg-sky-950/30 border border-sky-800/60 p-3.5 rounded-2xl">
+                            <div class="font-black text-sky-400 mb-1">🗑️ GRUPO D — Resíduos Comuns</div>
+                            <p class="text-slate-300 text-xs">Resíduos que não apresentam risco biológico, químico ou radiológico à saúde ou ao meio ambiente, equiparados aos resíduos domiciliares. <strong>Exemplos:</strong> papel de escritório administrativo, copos plásticos, embalagens secundárias de medicamentos (caixas de papelão limpas), papel toalha de secagem das mãos. <strong>Destinação:</strong> Reciclagem (se secos e limpos) ou Aterro Sanitário Municipal.</p>
+                        </div>
+                        <div class="bg-yellow-950/30 border border-yellow-700/60 p-3.5 rounded-2xl md:col-span-2">
+                            <div class="font-black text-yellow-400 mb-1">🪡 GRUPO E — Materiais Perfurocortantes</div>
+                            <p class="text-slate-300 text-xs">Objetos e instrumentos capazes de cortar ou perfurar a pele, podendo transmitir patógenos graves (como HIV e Hepatites B e C) em acidentes ocupacionais. <strong>Exemplos:</strong> agulhas hipodérmicas, lâminas de bisturi, lancetas, escalpes, ampolas de vidro quebradas e lâminas de microscopia. <strong>Acondicionamento e Tratamento:</strong> Devem ser descartados imediatamente em <strong>caixas coletoras rígidas amarelas</strong> resistentes à punctura (preenchidas apenas até 2/3 ou a linha tracejada), passando por esterilização/tratamento conforme eventual contaminação associada.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conexão Interdisciplinar -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                        <div class="font-black text-emerald-400 mb-1">🧬 Biologia e Saúde Pública</div>
+                        <p class="text-xs text-slate-300">Estuda a cadeia epidemiológica de transmissão de microrganismos patogênicos e a importância dos EPIs (luvas, botas, avental, máscara e óculos) e da inativação microbiana por calor úmido (autoclave a 121°C–134°C) para romper esporos bacterianos e vírus.</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                        <div class="font-black text-amber-400 mb-1">⚗️ Química Ambiental</div>
+                        <p class="text-xs text-slate-300">Analisa a estabilidade molecular de fármacos, antibióticos, hormônios e solventes. Descartados na rede de esgoto ou solo comum, esses compostos contaminam lençóis freáticos, alteram o pH aquático e induzem resistência bacteriana.</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                        <div class="font-black text-sky-400 mb-1">📐 Matemática Aplicada</div>
+                        <p class="text-xs text-slate-300">Fundamental no dimensionamento de frotas, cubagem de armazenamento, cálculo de decaimento radioativo (meia-vida), taxa de eficiência operacional <code>(Triagens Corretas ÷ Total) × 100</code> e retorno sobre investimento (ROI) das expansões.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-slate-950/80 rounded-b-3xl text-right">
+                <button onclick="uiManager.hideMenu('learnMenu')" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-6 rounded-xl text-sm">Entendido, voltar ao jogo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. SISTEMA DE ÁUDIO SINTETIZADO (WEB AUDIO API — ZERO ARQUIVOS EXTERNOS)
+           ========================================================================= */
+        const soundFX = {
+            ctx: null,
+            muted: false,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            toggleMute() {
+                this.muted = !this.muted;
+                const btn = document.getElementById('muteBtn');
+                if (btn) btn.innerText = this.muted ? '🔇' : '🔊';
+            },
+            play(type) {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    if (type === 'pickup') {
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(520, now);
+                        osc.frequency.exponentialRampToValueAtTime(880, now + 0.11);
+                        gain.gain.setValueAtTime(0.12, now);
+                        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                        osc.start(now); osc.stop(now + 0.12);
+                    } else if (type === 'success') {
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(587.33, now);
+                        osc.frequency.setValueAtTime(880, now + 0.08);
+                        gain.gain.setValueAtTime(0.15, now);
+                        gain.gain.linearRampToValueAtTime(0.01, now + 0.24);
+                        osc.start(now); osc.stop(now + 0.24);
+                    } else if (type === 'error') {
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(220, now);
+                        osc.frequency.linearRampToValueAtTime(130, now + 0.22);
+                        gain.gain.setValueAtTime(0.14, now);
+                        gain.gain.linearRampToValueAtTime(0.01, now + 0.24);
+                        osc.start(now); osc.stop(now + 0.24);
+                    } else if (type === 'upgrade') {
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(440, now);
+                        osc.frequency.setValueAtTime(554.37, now + 0.07);
+                        osc.frequency.setValueAtTime(659.25, now + 0.14);
+                        gain.gain.setValueAtTime(0.16, now);
+                        gain.gain.linearRampToValueAtTime(0.01, now + 0.32);
+                        osc.start(now); osc.stop(now + 0.32);
+                    }
+                } catch (e) {}
+            }
+        };
+
+        /* =========================================================================
+           2. BASE DE DADOS CIENTÍFICA E TÉCNICA (GRUPOS A, B, C, D, E)
+           ========================================================================= */
+        const WasteGroups = {
+            A: { name: 'Biológico (Infectante)', color: '#ef4444', badgeBg: '#7f1d1d', icon: '🩸', treatment: 'Autoclavagem ou Incineração Licenciada', desc: 'Material com possível presença de agentes biológicos infecciosos.' },
+            B: { name: 'Químico Perigoso', color: '#f97316', badgeBg: '#7c2d12', icon: '🧪', treatment: 'Neutralização Química / Aterro Industrial Classe I', desc: 'Substância inflamável, corrosiva, reativa ou tóxica.' },
+            C: { name: 'Rejeito Radioativo', color: '#a855f7', badgeBg: '#581c87', icon: '☢️', treatment: 'Blindagem em Chumbo e Decaimento (Norma CNEN)', desc: 'Material contaminado com radionuclídeos de medicina nuclear.' },
+            D: { name: 'Resíduo Comum', color: '#0ea5e9', badgeBg: '#0c4a6e', icon: '🗑️', treatment: 'Triagem para Reciclagem ou Aterro Sanitário', desc: 'Resíduo sem contaminação biológica, química ou radiológica.' },
+            E: { name: 'Perfurocortante', color: '#eab308', badgeBg: '#713f12', icon: '🪡', treatment: 'Coletor Rígido + Autoclavagem e Disposição Segura', desc: 'Objeto capaz de cortar ou perfurar, exigindo caixa rígida.' }
+        };
+
+        const WasteVisualIcons = { gaze:'🩹', tubo_sangue:'🧫', placa_petri:'🔬', bolsa_transfusao:'🩸', xarope_vencido:'💊', solvente_xilol:'🧪', revelador_rx:'⚗️', seringa_isotopo:'☢️', luva_iodo131:'☢️', copo_plastico:'🥤', papel_adm:'📄', papel_toalha:'🧻', agulha_usada:'🪡', lamina_bisturi:'🔪', ampola_quebrada:'🧪' };
+
+        const WasteItemsTemplate = [
+            { id: 'gaze', name: 'Gaze com Sangue', group: 'A', visual: 'bio_bag', hint: 'Curativo cirúrgico sujo de sangue e exsudato biológico.', edu: 'Por conter fluido biológico (sangue), pertence ao Grupo A e exige tratamento térmico (autoclavagem) antes da destinação.' },
+            { id: 'tubo_sangue', name: 'Tubo de Coleta Sanguínea', group: 'A', visual: 'blood_vial', hint: 'Amostra biológica fechada proveniente de hemograma.', edu: 'Amostras de sangue e secreções possuem alto risco infectante (Grupo A).' },
+            { id: 'placa_petri', name: 'Placa de Petri com Cultura', group: 'A', visual: 'petri_dish', hint: 'Meio de cultura microbiológica com colônias bacterianas.', edu: 'Culturas e estoques de microrganismos (Subgrupo A1) requerem inativação obrigatória por autoclavagem.' },
+            { id: 'bolsa_transfusao', name: 'Bolsa de Hemocomponente', group: 'A', visual: 'bio_bag', hint: 'Bolsa plástica pós-transfusão com resíduo hemático.', edu: 'Bolsas transfusionais com sangue residual pertencem ao Grupo A.' },
+
+            { id: 'xarope_vencido', name: 'Lote de Medicamentos Vencidos', group: 'B', visual: 'chem_bottle', hint: 'Frascos de antibióticos e xaropes fora do prazo de validade.', edu: 'Medicamentos vencidos (Grupo B) não podem ir ao lixo comum nem à pia, pois contaminam a água e induzem resistência bacteriana.' },
+            { id: 'solvente_xilol', name: 'Frasco de Reagente (Xilol/Formol)', group: 'B', visual: 'chem_jug', hint: 'Galão âmbar com solvente inflamável e tóxico de laboratório.', edu: 'Reagentes tóxicos e inflamáveis pertencem ao Grupo B e exigem tratamento químico ou aterro Classe I.' },
+            { id: 'revelador_rx', name: 'Efluente Revelador de Raio-X', group: 'B', visual: 'chem_jug', hint: 'Solução química utilizada em processamento radiográfico.', edu: 'Reveladores e fixadores contêm compostos químicos perigosos (Grupo B) que demandam neutralização/recuperação.' },
+
+            { id: 'seringa_isotopo', name: 'Blindagem c/ Tecnécio-99m', group: 'C', visual: 'rad_cask', hint: 'Recipiente blindado contendo material de cintilografia.', edu: 'Rejeitos com radionuclídeos (Grupo C) devem permanecer em sala blindada de decaimento até atingirem o limite de eliminação.' },
+            { id: 'luva_iodo131', name: 'Cápsula/Insumo de Iodo-131', group: 'C', visual: 'rad_cask', hint: 'Insumo proveniente de terapia em medicina nuclear.', edu: 'Materiais contaminados com radioisótopos pertencem ao Grupo C e seguem protocolos da CNEN.' },
+
+            { id: 'copo_plastico', name: 'Copos Descartáveis da Recepção', group: 'D', visual: 'common_bag', hint: 'Plástico limpo utilizado apenas para água na sala de espera.', edu: 'Sem contato com secreções ou agentes químicos, é classificado como Grupo D (Comum) e pode ser reciclado.' },
+            { id: 'papel_adm', name: 'Papelada e Caixas Secundárias', group: 'D', visual: 'cardboard', hint: 'Papéis administrativos e caixas externas de papelão limpas.', edu: 'Embalagens secundárias que não tiveram contato com medicamentos ou fluidos vão para o Grupo D (Reciclagem).' },
+            { id: 'papel_toalha', name: 'Papel Toalha de Lavatório Comum', group: 'D', visual: 'common_bag', hint: 'Papel utilizado apenas para enxugar mãos lavadas com água e sabão.', edu: 'Resíduos sanitários e papéis sem contaminação infectante pertencem ao Grupo D.' },
+
+            { id: 'agulha_usada', name: 'Caixa com Agulhas e Escalpes', group: 'E', visual: 'sharps_box', hint: 'Coletor rígido contendo agulhas hipodérmicas utilizadas.', edu: 'Agulhas pertencem ao Grupo E (Perfurocortantes) e exigem acondicionamento imediato em caixa rígida resistente à punctura.' },
+            { id: 'lamina_bisturi', name: 'Lâminas de Bisturi e Lancetas', group: 'E', visual: 'sharps_box', hint: 'Instrumentos cirúrgicos cortantes descartados em coletor amarelo.', edu: 'Bisturis e lancetas oferecem grave risco de acidente percutâneo, sendo classificados no Grupo E.' },
+            { id: 'ampola_quebrada', name: 'Ampolas e Vidrarias Quebradas', group: 'E', visual: 'sharps_glass', hint: 'Fragmentos cortantes de vidro de ampolas de medicação.', edu: 'Qualquer vidro quebrado ou capilar em serviço de saúde deve ser manejado no Grupo E para proteger os trabalhadores.' }
+        ];
+
+        /* =========================================================================
+           3. ARQUITETURA URBANA E MAPA EVOLUTIVO (2400 x 1900)
+           ========================================================================= */
+        const MapData = {
+            width: 2400,
+            height: 1900,
+            roads: [
+                { x: 100, y: 520, w: 2200, h: 110, dir: 'h' },
+                { x: 100, y: 1220, w: 2200, h: 110, dir: 'h' },
+                { x: 700, y: 100, w: 110, h: 1700, dir: 'v' },
+                { x: 1580, y: 100, w: 110, h: 1700, dir: 'v' },
+                { x: 350, y: 440, w: 120, h: 90, dir: 'access' },
+                { x: 1120, y: 410, w: 100, h: 120, dir: 'access' },
+                { x: 1920, y: 410, w: 100, h: 120, dir: 'access' },
+                { x: 350, y: 1130, w: 110, h: 100, dir: 'access' },
+                { x: 1920, y: 1130, w: 110, h: 100, dir: 'access' },
+                { x: 920, y: 1320, w: 480, h: 120, dir: 'yard' }
+            ],
+            buildings: [
+                {
+                    id: 'hospital',
+                    name: 'Hospital Geral Santa Vida',
+                    sector: 'Setor 1 • Zona Hospitalar',
+                    x: 180, y: 140, w: 460, h: 300,
+                    wallColor: '#f8fafc', roofColor: '#e2e8f0', accent: '#ef4444',
+                    zoneId: 1,
+                    spawns: ['A', 'A', 'B', 'D', 'E', 'E'],
+                    bay: { x: 520, y: 455, w: 120, h: 48, label: 'ABRIGO DE RSS' }
+                },
+                {
+                    id: 'clinic',
+                    name: 'Policlínica & Odontologia Bem-Estar',
+                    sector: 'Setor 1 • Bairro Clínico',
+                    x: 980, y: 160, w: 360, h: 250,
+                    wallColor: '#f0f9ff', roofColor: '#bae6fd', accent: '#0284c7',
+                    zoneId: 1,
+                    spawns: ['A', 'D', 'D', 'E'],
+                    bay: { x: 1235, y: 425, w: 105, h: 46, label: 'COLETA RSS' }
+                },
+                {
+                    id: 'pharmacy',
+                    name: 'Farmácia & Drogaria Saúde Central',
+                    sector: 'Setor 2 • Distrito Comercial',
+                    x: 1800, y: 180, w: 320, h: 230,
+                    wallColor: '#ecfdf5', roofColor: '#a7f3d0', accent: '#10b981',
+                    zoneId: 2,
+                    spawns: ['B', 'B', 'D', 'E'],
+                    bay: { x: 2025, y: 425, w: 95, h: 46, label: 'LOGÍSTICA REVERSA' }
+                },
+                {
+                    id: 'lab',
+                    name: 'Laboratório BioAnálises & Patologia',
+                    sector: 'Setor 3 • Polo Diagnóstico',
+                    x: 200, y: 860, w: 420, h: 270,
+                    wallColor: '#faf5ff', roofColor: '#e9d5ff', accent: '#9333ea',
+                    zoneId: 3,
+                    spawns: ['A', 'A', 'B', 'B', 'E'],
+                    bay: { x: 500, y: 1145, w: 115, h: 46, label: 'RESÍDUOS LAB' }
+                },
+                {
+                    id: 'nuclear',
+                    name: 'Instituto de Medicina Nuclear & Oncologia',
+                    sector: 'Setor 4 • Alta Complexidade',
+                    x: 1780, y: 850, w: 420, h: 280,
+                    wallColor: '#f5f3ff', roofColor: '#ddd6fe', accent: '#7c3aed',
+                    zoneId: 4,
+                    spawns: ['A', 'B', 'C', 'C', 'E'],
+                    bay: { x: 2070, y: 1145, w: 125, h: 46, label: 'BAIA BLINDADA' }
+                },
+                {
+                    id: 'landfill',
+                    name: 'Aterro Sanitário Municipal',
+                    sector: 'Destino licenciado • Resíduos compatíveis',
+                    x: 1760, y: 1450, w: 500, h: 300,
+                    wallColor: '#d6d3d1', roofColor: '#a8a29e', accent: '#78716c',
+                    zoneId: 2,
+                    isDestination: true,
+                    destinationType: 'landfill',
+                    bay: { x: 1665, y: 1530, w: 90, h: 120, label: 'RECEPÇÃO' }
+                },
+                {
+                    id: 'central',
+                    name: 'Central de Tratamento EcoSaúde',
+                    sector: 'Complexo Industrial de RSS',
+                    x: 900, y: 1440, w: 520, h: 340,
+                    wallColor: '#fef3c7', roofColor: '#fde68a', accent: '#059669',
+                    zoneId: 1,
+                    isCentral: true,
+                    entrance: { x: 1070, y: 1380, w: 180, h: 70 }
+                }
+            ],
+            trees: [],
+            illegalDumpSites: [
+                { x: 120, y: 700, w: 150, h: 90, label: 'Terreno baldio' },
+                { x: 2140, y: 690, w: 150, h: 90, label: 'Margem urbana' },
+                { x: 1460, y: 1030, w: 95, h: 120, label: 'Beco comercial' },
+                { x: 690, y: 1510, w: 150, h: 100, label: 'Área verde' }
+            ],
+            parkedCars: [
+                { x: 220, y: 465, w: 56, h: 30, color: '#ffffff', type: 'ambulance' },
+                { x: 1020, y: 435, w: 48, h: 26, color: '#3b82f6', type: 'car' },
+                { x: 1830, y: 435, w: 48, h: 26, color: '#ef4444', type: 'car' },
+                { x: 240, y: 1150, w: 48, h: 26, color: '#10b981', type: 'car' },
+                { x: 1820, y: 1150, w: 52, h: 28, color: '#64748b', type: 'car' }
+            ],
+            traffic: [
+                { x: 300, y: 545, vx: 110, vy: 0, w: 48, h: 26, color: '#e2e8f0' },
+                { x: 1800, y: 585, vx: -125, vy: 0, w: 48, h: 26, color: '#38bdf8' },
+                { x: 1400, y: 1245, vx: 95, vy: 0, w: 54, h: 28, color: '#f59e0b' }
+            ]
+        };
+
+        (function generateScenery() {
+            const spots = [
+                [120, 120], [660, 160], [660, 340], [860, 150], [860, 320], [1420, 180], [1420, 350],
+                [1730, 160], [2200, 160], [2220, 360], [120, 720], [650, 740], [870, 740], [1150, 720],
+                [1440, 740], [1730, 740], [2240, 740], [130, 1450], [320, 1520], [540, 1480], [640, 1680],
+                [1480, 1480], [1520, 1680], [1760, 1480], [1980, 1560], [2200, 1480], [2150, 1720]
+            ];
+            spots.forEach(([x, y], idx) => {
+                MapData.trees.push({ x, y, r: 22 + (idx % 3) * 5, shade: idx % 2 === 0 ? '#15803d' : '#166534' });
+            });
+        })();
+
+        /* =========================================================================
+           4. MELHORIAS DA CENTRAL, FROTA E EXPANSÃO DE SETORES
+           ========================================================================= */
+        const UpgradesData = [
+            {
+                id: 'facility',
+                icon: '🏭',
+                name: 'Expansão da Central de Tratamento',
+                desc: 'Amplia visualmente a fábrica no mapa: adiciona docas duplas, autoclave de esterilização, unidade de tratamento térmico, tanques químicos e bônus de créditos (+25% por nível).',
+                baseCost: 120, costMult: 1.8, maxLevel: 4,
+                effect: (p, lvl) => { p.facilityLevel = 1 + lvl; p.sortBonus += 0.25 * lvl; }
+            },
+            {
+                id: 'vehicle',
+                icon: '🚛',
+                name: 'Frota de Coleta Especializada',
+                desc: 'Nv.1: Carrinho Coletor (+3 carga) • Nv.2: Van Furgão de RSS (+7 carga e mais velocidade) • Nv.3: Caminhão Compactador Blindado (+13 carga e alta velocidade).',
+                baseCost: 150, costMult: 2.1, maxLevel: 3,
+                effect: (p, lvl) => {
+                    p.vehicleLevel = lvl;
+                    if (lvl === 1) { p.maxCapacity += 3; p.speed += 35; }
+                    if (lvl === 2) { p.maxCapacity += 7; p.speed += 85; }
+                    if (lvl === 3) { p.maxCapacity += 13; p.speed += 130; }
+                }
+            },
+            {
+                id: 'capacity',
+                icon: '📦',
+                name: 'Contentores e Bombonas Extras',
+                desc: 'Aumenta o compartimento de acondicionamento seguro (+2 unidades de capacidade por nível).',
+                baseCost: 80, costMult: 1.5, maxLevel: 5,
+                effect: (p, lvl) => { p.maxCapacity += 2 * lvl; }
+            },
+            {
+                id: 'speed',
+                icon: '⚡',
+                name: 'Logística e Motorização Ágil',
+                desc: 'Otimiza o deslocamento pela cidade (+12% de velocidade de movimento por nível).',
+                baseCost: 100, costMult: 1.6, maxLevel: 4,
+                effect: (p, lvl) => { p.speed *= Math.pow(1.12, lvl); }
+            },
+            {
+                id: 'tech',
+                icon: '🔬',
+                name: 'Scanner Óptico de Biossegurança',
+                desc: 'Nv.1: Exibe dica detalhada na bancada • Nv.2: Revela a etiqueta do grupo no mapa ao se aproximar • Nv.3: Bônus extra de +40% no valor de cada tratamento.',
+                baseCost: 180, costMult: 1.9, maxLevel: 3,
+                effect: (p, lvl) => {
+                    p.scannerLevel = lvl;
+                    if (lvl >= 3) p.sortBonus += 0.4;
+                }
+            },
+            {
+                id: 'zones',
+                icon: '🗺️',
+                name: 'Licenciamento de Novos Setores Urbanos',
+                desc: 'Desbloqueia contratos de coleta: Nv.1: Farmácia Comunitária (Químicos) • Nv.2: Laboratório BioAnálises • Nv.3: Instituto de Medicina Nuclear (Grupo C).',
+                baseCost: 140, costMult: 1.9, maxLevel: 3,
+                effect: (p, lvl) => { p.unlockedZones = 1 + lvl; }
+            }
+        ];
+
+        const QuizzesData = [
+            { q: "Segundo a RDC 222/2018 da ANVISA, o que caracteriza os resíduos do Grupo A?", opts: ["São materiais recicláveis de escritório", "Possuem possível presença de agentes biológicos com risco de infecção", "São compostos exclusivamente por substâncias inflamáveis", "São rejeitos provenientes de medicina nuclear"], ans: 1, exp: "O Grupo A engloba resíduos com possível presença de agentes biológicos (sangue, secreções, culturas microbiológicas) que exigem tratamento como autoclavagem ou incineração.", cat: "Biologia" },
+            { q: "Qual deve ser a destinação correta de reagentes tóxicos e medicamentos vencidos (Grupo B)?", opts: ["Lixo domiciliar comum", "Diluição na pia do laboratório", "Tratamento químico específico ou Aterro Industrial Classe I", "Coleta seletiva municipal de plástico"], ans: 2, exp: "Substâncias químicas perigosas (Grupo B) contaminam lençóis freáticos se descartadas incorretamente, exigindo neutralização, incineração licenciada ou aterro industrial Classe I.", cat: "Química" },
+            { q: "Onde devem ser descartadas agulhas, lancetas e lâminas de bisturi imediatamente após o uso?", opts: ["Em saco plástico branco leitoso", "Em saco plástico azul de reciclagem", "Em coletor rígido amarelo resistente à punctura (Grupo E)", "Em lixeira comum com pedal"], ans: 2, exp: "Perfurocortantes (Grupo E) exigem caixas coletoras de paredes rígidas para impedir acidentes percutâneos e contaminação ocupacional.", cat: "Biossegurança" },
+            { q: "Um caminhão de coleta comporta 16 bombonas. Se o agente já carregou 12 bombonas e teve 9 acertos em 10 triagens, qual a ocupação da carga e a eficiência?", opts: ["50% de ocupação e 80% de eficiência", "75% de ocupação e 90% de eficiência", "80% de ocupação e 95% de eficiência", "75% de ocupação e 100% de eficiência"], ans: 1, exp: "Ocupação: (12 ÷ 16) × 100 = 75%. Eficiência de triagem: (9 ÷ 10) × 100 = 90%.", cat: "Matemática" },
+            { q: "Qual é o procedimento adotado para rejeitos radioativos de meia-vida curta (Grupo C) gerados em medicina nuclear?", opts: ["Prensagem junto com papelão", "Armazenamento em recipientes blindados para decaimento radioativo", "Descarte direto no caminhão compactador municipal", "Compostagem orgânica"], ans: 1, exp: "Os rejeitos do Grupo C permanecem confinados em blindagens de chumbo em sala de decaimento (normas CNEN) até que a radiação atinja níveis seguros.", cat: "Física & Química" },
+            { q: "Por que a segregação rigorosa do Grupo D (resíduo comum) na origem é essencial para um hospital?", opts: ["Porque permite misturar agulhas com papel", "Porque evita que resíduos comuns se contaminem, reduzindo custos de tratamento e permitindo reciclagem", "Porque o Grupo D exige incineração obrigatória", "Porque elimina a necessidade de usar luvas no laboratório"], ans: 1, exp: "Quando o papel e embalagens limpas (Grupo D) são separados na origem, não entram em contato com infectantes (Grupo A), reduzindo drasticamente o volume que exige tratamento caro.", cat: "Gestão Ambiental" }
+        ];
+
+        const MissionsData = [
+            { id: 1, title: "1. Primeiro Expediente", desc: "Colete 3 resíduos no Hospital ou Policlínica e leve até a doca frontal da Central.", target: 3, type: 'collectAny' },
+            { id: 2, title: "2. Triagem Responsável", desc: "Classifique e trate corretamente 3 resíduos na bancada da Central.", target: 3, type: 'processAny' },
+            { id: 3, title: "3. Controle Biológico", desc: "Trate corretamente 4 resíduos infectantes do Grupo A.", target: 4, type: 'processA' },
+            { id: 4, title: "4. Modernização Industrial", desc: "Adquira qualquer melhoria no menu 🛠️ (Frota, Capacidade ou Expansão).", target: 1, type: 'buyUpgrade' },
+            { id: 5, title: "5. Prevenção de Acidentes", desc: "Processe 4 lotes de Perfurocortantes (Grupo E) ou Químicos (Grupo B).", target: 4, type: 'processBE' },
+            { id: 6, title: "6. Capacitação Técnica", desc: "Alcance pelo menos 40 pontos no minigame 'Desafio de Segregação' (🎮).", target: 40, type: 'scoreDescarte' },
+            { id: 7, title: "7. Excelência em Gestão de RSS", desc: "Processe corretamente 15 resíduos para consolidar sua empresa.", target: 15, type: 'processAny' },
+            { id: 8, title: "Operação Livre • Complexo Modelo", desc: "Campanha concluída! Expanda a Central até o Nível 5 e desbloqueie todos os setores.", target: Infinity, type: 'freePlay' }
+        ];
+
+        /* =========================================================================
+           5. ESTADO GLOBAL DO JOGO E PERSISTÊNCIA (LOCALSTORAGE COMPATÍVEL)
+           ========================================================================= */
+        let state = {
+            mode: 'menu',
+            lastTime: 0,
+            camera: { x: 0, y: 0 },
+            keys: {},
+            touch: { dx: 0, dy: 0 },
+
+            save: {
+                credits: 50,
+                xp: 0,
+                level: 1,
+                missionIdx: 0,
+                missionProgress: 0,
+                stats: { correctSorts: 0, totalSorts: 0 },
+                upgrades: { facility: 0, vehicle: 0, capacity: 0, speed: 0, tech: 0, zones: 0 }
+            },
+
+            player: {
+                x: 1140, y: 1340, w: 38, h: 38,
+                speed: 250,
+                maxCapacity: 5,
+                load: [],
+                sortBonus: 1,
+                facilityLevel: 1,
+                vehicleLevel: 0,
+                scannerLevel: 0,
+                unlockedZones: 1,
+                angle: -Math.PI / 2,
+                dir: 'up',
+                walkCycle: 0,
+                isMoving: false
+            },
+
+            worldEntities: {
+                wasteNodes: [],
+                particles: [],
+                floatingTexts: [],
+                illegalSpawnClock: 0
+            }
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let minimapCollapsed = false;
+
+        function toggleMissionDetails(event) {
+            if (window.innerWidth > 900 && !window.matchMedia('(pointer: coarse)').matches) return;
+            if (event) event.stopPropagation();
+            const panel = document.getElementById('missionPanel');
+            const toggle = document.getElementById('missionToggle');
+            panel.classList.toggle('expanded');
+            toggle.textContent = panel.classList.contains('expanded') ? '▴' : '▾';
+        }
+
+        function toggleMobileDrawer(force) {
+            const drawer = document.getElementById('mobileDrawer');
+            const open = typeof force === 'boolean' ? force : !drawer.classList.contains('open');
+            drawer.classList.toggle('open', open);
+        }
+
+        function openDrawerMenu(id) {
+            toggleMobileDrawer(false);
+            uiManager.showMenu(id);
+        }
+
+        function syncDrawerSound() {
+            const btn = document.getElementById('drawerMuteBtn');
+            if (btn) btn.textContent = soundFX.muted ? '🔇 Som desligado' : '🔊 Som ligado';
+        }
+
+        function toggleMinimap() {
+            minimapCollapsed = !minimapCollapsed;
+            const btn = document.getElementById('minimapToggle');
+            btn.textContent = minimapCollapsed ? '🗺️' : '➖';
+            btn.classList.toggle('collapsed', minimapCollapsed);
+            btn.setAttribute('aria-label', minimapCollapsed ? 'Expandir mapa' : 'Minimizar mapa');
+        }
+
+        /* =========================================================================
+           6. CONTROLES (TECLADO E TOUCH MOBILE)
+           ========================================================================= */
+        window.addEventListener('keydown', e => {
+            const k = e.key.toLowerCase();
+            state.keys[k] = true;
+            if (k === 'escape') {
+                if (state.mode === 'playing') uiManager.showMenu('pauseMenu');
+                else if (state.mode === 'paused') uiManager.hideMenu('pauseMenu');
+            }
+            if (k === 'e' && state.mode === 'playing') {
+                e.preventDefault();
+                interact();
+            }
+        });
+        window.addEventListener('keyup', e => {
+            state.keys[e.key.toLowerCase()] = false;
+        });
+
+        const jBase = document.getElementById('joystickBase');
+        const jStick = document.getElementById('joystickStick');
+        const aBtn = document.getElementById('actionBtn');
+        let jCenter = { x: 0, y: 0 };
+
+        jBase.addEventListener('touchstart', e => {
+            e.preventDefault();
+            jBase.classList.add('is-active');
+            const rect = jBase.getBoundingClientRect();
+            jCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+            handleJoystickMove(e.touches[0]);
+        }, { passive: false });
+
+        jBase.addEventListener('touchmove', e => {
+            e.preventDefault();
+            handleJoystickMove(e.touches[0]);
+        }, { passive: false });
+
+        const resetJoystick = e => {
+            if (e) e.preventDefault();
+            state.touch.dx = 0;
+            state.touch.dy = 0;
+            jBase.classList.remove('is-active');
+            jStick.style.transform = `translate(0px, 0px)`;
+        };
+        jBase.addEventListener('touchend', resetJoystick, { passive: false });
+        jBase.addEventListener('touchcancel', resetJoystick, { passive: false });
+
+        aBtn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            aBtn.classList.add('is-active');
+            if (state.mode === 'playing') interact();
+        }, { passive: false });
+
+        aBtn.addEventListener('touchend', () => aBtn.classList.remove('is-active'), { passive: true });
+        aBtn.addEventListener('touchcancel', () => aBtn.classList.remove('is-active'), { passive: true });
+
+        function handleJoystickMove(touch) {
+            let dx = touch.clientX - jCenter.x;
+            let dy = touch.clientY - jCenter.y;
+            const maxDist = 36;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+            jStick.style.transform = `translate(${dx}px, ${dy}px)`;
+            state.touch.dx = dx / maxDist;
+            state.touch.dy = dy / maxDist;
+        }
+
+        /* =========================================================================
+           7. SISTEMA DE SALVAMENTO E APLICAÇÃO DE MELHORIAS
+           ========================================================================= */
+        const Storage = {
+            save() {
+                try {
+                    localStorage.setItem('residuosSave', JSON.stringify(state.save));
+                } catch (e) { console.error("Erro ao salvar progresso:", e); }
+            },
+            load() {
+                const data = localStorage.getItem('residuosSave');
+                if (data) {
+                    try {
+                        const parsed = JSON.parse(data);
+                        state.save = {
+                            ...state.save,
+                            ...parsed,
+                            stats: { ...state.save.stats, ...(parsed.stats || {}) },
+                            upgrades: { ...state.save.upgrades, ...(parsed.upgrades || {}) }
+                        };
+                    } catch (e) { console.error("Erro ao carregar save:", e); }
+                }
+            },
+            reset() {
+                localStorage.removeItem('residuosSave');
+                location.reload();
+            }
+        };
+
+        function applyUpgrades() {
+            state.player.maxCapacity = 5;
+            state.player.speed = 250;
+            state.player.sortBonus = 1;
+            state.player.facilityLevel = 1;
+            state.player.vehicleLevel = 0;
+            state.player.scannerLevel = 0;
+            state.player.unlockedZones = 1;
+
+            for (let upg of UpgradesData) {
+                let lvl = state.save.upgrades[upg.id] || 0;
+                if (lvl > 0) upg.effect(state.player, lvl);
+            }
+
+            if (state.player.vehicleLevel === 0) { state.player.w = 34; state.player.h = 34; }
+            else if (state.player.vehicleLevel === 1) { state.player.w = 38; state.player.h = 38; }
+            else if (state.player.vehicleLevel === 2) { state.player.w = 46; state.player.h = 46; }
+            else { state.player.w = 52; state.player.h = 52; }
+        }
+
+        /* =========================================================================
+           8. LÓGICA DE ATUALIZAÇÃO, COLISÃO, SPAWN COERENTE E INTERAÇÃO
+           ========================================================================= */
+        let currentInteractionNode = null;
+        let isNearCentral = false;
+        let spawnTimer = 0;
+
+        function update(dt) {
+            if (state.mode !== 'playing') return;
+
+            let vx = 0, vy = 0;
+            if (state.keys['w'] || state.keys['arrowup']) vy -= 1;
+            if (state.keys['s'] || state.keys['arrowdown']) vy += 1;
+            if (state.keys['a'] || state.keys['arrowleft']) vx -= 1;
+            if (state.keys['d'] || state.keys['arrowright']) vx += 1;
+
+            if (vx === 0 && vy === 0 && (Math.abs(state.touch.dx) > 0.08 || Math.abs(state.touch.dy) > 0.08)) {
+                vx = state.touch.dx;
+                vy = state.touch.dy;
+            }
+
+            const len = Math.hypot(vx, vy);
+            if (len > 0) {
+                vx /= len;
+                vy /= len;
+                state.player.angle = Math.atan2(vy, vx);
+                state.player.isMoving = true;
+                state.player.walkCycle += dt * (state.player.speed / 32);
+
+                if (Math.abs(vx) > Math.abs(vy)) {
+                    state.player.dir = vx > 0 ? 'right' : 'left';
+                } else {
+                    state.player.dir = vy > 0 ? 'down' : 'up';
+                }
+            } else {
+                state.player.isMoving = false;
+            }
+
+            const step = state.player.speed * dt;
+            const newX = state.player.x + vx * step;
+            const newY = state.player.y + vy * step;
+
+            let canMoveX = newX >= 20 && (newX + state.player.w) <= (MapData.width - 20);
+            let canMoveY = newY >= 20 && (newY + state.player.h) <= (MapData.height - 20);
+
+            const rectX = { x: newX, y: state.player.y, w: state.player.w, h: state.player.h };
+            const rectY = { x: state.player.x, y: newY, w: state.player.w, h: state.player.h };
+
+            for (let b of MapData.buildings) {
+                if (checkCollision(rectX, b)) canMoveX = false;
+                if (checkCollision(rectY, b)) canMoveY = false;
+            }
+
+            for (let car of MapData.parkedCars) {
+                if (checkCollision(rectX, car)) canMoveX = false;
+                if (checkCollision(rectY, car)) canMoveY = false;
+            }
+
+            if (canMoveX) state.player.x = newX;
+            if (canMoveY) state.player.y = newY;
+
+            MapData.traffic.forEach(car => {
+                car.x += car.vx * dt;
+                if (car.vx > 0 && car.x > MapData.width - 140) car.x = 120;
+                if (car.vx < 0 && car.x < 120) car.x = MapData.width - 140;
+            });
+
+            spawnTimer += dt;
+            if (spawnTimer >= 3.2) {
+                spawnTimer = 0;
+                spawnWaste();
+            }
+
+            state.worldEntities.illegalSpawnClock += dt;
+            if (state.worldEntities.illegalSpawnClock >= 18) {
+                state.worldEntities.illegalSpawnClock = 0;
+                spawnIllegalWaste();
+            }
+
+            if (state.player.facilityLevel >= 3 && Math.random() < 4 * dt) {
+                const centralB = MapData.buildings.find(b => b.isCentral);
+                state.worldEntities.particles.push({
+                    x: centralB.x + centralB.w - 55 + (Math.random() * 10 - 5),
+                    y: centralB.y + 35,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: -25 - Math.random() * 15,
+                    r: 6 + Math.random() * 6,
+                    alpha: 0.55,
+                    color: '#e2e8f0'
+                });
+            }
+
+            for (let i = state.worldEntities.particles.length - 1; i >= 0; i--) {
+                const pt = state.worldEntities.particles[i];
+                pt.x += pt.vx * dt;
+                pt.y += pt.vy * dt;
+                pt.r += 4 * dt;
+                pt.alpha -= 0.35 * dt;
+                if (pt.alpha <= 0) state.worldEntities.particles.splice(i, 1);
+            }
+
+            for (let i = state.worldEntities.floatingTexts.length - 1; i >= 0; i--) {
+                const ft = state.worldEntities.floatingTexts[i];
+                ft.y -= 35 * dt;
+                ft.life -= dt;
+                if (ft.life <= 0) state.worldEntities.floatingTexts.splice(i, 1);
+            }
+
+            const targetCamX = state.player.x + state.player.w / 2 - canvas.width / 2;
+            const targetCamY = state.player.y + state.player.h / 2 - canvas.height / 2;
+            state.camera.x += (targetCamX - state.camera.x) * Math.min(1, dt * 10);
+            state.camera.y += (targetCamY - state.camera.y) * Math.min(1, dt * 10);
+
+            const maxCamX = Math.max(0, MapData.width - canvas.width);
+            const maxCamY = Math.max(0, MapData.height - canvas.height);
+            state.camera.x = Math.max(0, Math.min(state.camera.x, maxCamX));
+            state.camera.y = Math.max(0, Math.min(state.camera.y, maxCamY));
+
+            checkProximity();
+        }
+
+        function checkCollision(r1, r2) {
+            return (
+                r1.x < r2.x + r2.w &&
+                r1.x + r1.w > r2.x &&
+                r1.y < r2.y + r2.h &&
+                r1.y + r1.h > r2.y
+            );
+        }
+
+        function checkProximity() {
+            currentInteractionNode = null;
+            isNearCentral = false;
+
+            const pCenter = {
+                x: state.player.x + state.player.w / 2,
+                y: state.player.y + state.player.h / 2
+            };
+
+            const centralB = MapData.buildings.find(b => b.isCentral);
+            if (centralB && centralB.entrance) {
+                const ent = centralB.entrance;
+                const playerRect = { x: state.player.x, y: state.player.y, w: state.player.w, h: state.player.h };
+                if (checkCollision(playerRect, ent)) {
+                    isNearCentral = true;
+                    const loadCount = state.player.load.length;
+                    uiManager.showHint(
+                        '🏭',
+                        'Acessar Central de Triagem',
+                        loadCount > 0
+                            ? `Você possui ${loadCount} resíduo(s) para classificar e tratar.`
+                            : `Doca aberta • Inspecione a central ou evolua as instalações.`
+                    );
+                    return;
+                }
+            }
+
+            const range = 62;
+            for (let i = state.worldEntities.wasteNodes.length - 1; i >= 0; i--) {
+                const node = state.worldEntities.wasteNodes[i];
+                const dist = Math.hypot(pCenter.x - node.x, pCenter.y - node.y);
+                if (dist < range) {
+                    currentInteractionNode = { type: 'waste', index: i, node: node };
+                    const groupTag = state.player.scannerLevel >= 2
+                        ? ` [Scanner: Grupo ${node.item.group}]`
+                        : ` [Classifique na Central]`;
+                    const irregular = node.illegal ? ' • 🚨 DESCARTE IRREGULAR' : '';
+                    uiManager.showHint(
+                        WasteVisualIcons[node.item.id] || '📦',
+                        `Coletar: ${node.item.name}${irregular}${groupTag}`,
+                        node.illegal ? `Encontrado em ${node.buildingName}. Recolha com segurança e leve à Central. ${node.item.hint}` : node.item.hint
+                    );
+                    return;
+                }
+            }
+
+            uiManager.hideHint();
+        }
+
+        function interact() {
+            if (isNearCentral) {
+                central.openMenu();
+                return;
+            }
+
+            if (currentInteractionNode && currentInteractionNode.type === 'waste') {
+                const node = currentInteractionNode.node;
+                if (state.player.load.length < state.player.maxCapacity) {
+                    state.player.load.push({ ...node.item, sourceName: node.buildingName, wasIllegal: !!node.illegal });
+                    state.worldEntities.wasteNodes.splice(currentInteractionNode.index, 1);
+
+                    for (let i = 0; i < 8; i++) {
+                        state.worldEntities.particles.push({
+                            x: node.x,
+                            y: node.y,
+                            vx: (Math.random() - 0.5) * 90,
+                            vy: (Math.random() - 0.5) * 90,
+                            r: 4,
+                            alpha: 0.9,
+                            color: '#34d399'
+                        });
+                    }
+                    state.worldEntities.floatingTexts.push({
+                        x: node.x,
+                        y: node.y - 10,
+                        text: `+1 ${node.item.name}`,
+                        color: '#4ade80',
+                        life: 1.1
+                    });
+
+                    soundFX.play('pickup');
+                    if (node.illegal) {
+                        game.addCredits(6);
+                        game.addXP(5);
+                        uiManager.notify(`🚨 Descarte irregular recolhido: ${node.item.name} • +6 Cr`, 'text-amber-300', 2200);
+                    } else {
+                        uiManager.notify(`📦 Coletado: ${node.item.name}`, 'text-emerald-300', 1800);
+                    }
+                    uiManager.updateHUD();
+                    missionSystem.progress('collectAny', 1);
+                    checkProximity();
+                } else {
+                    soundFX.play('error');
+                    uiManager.notify("⚠️ Capacidade Máxima! Retorne à Doca da Central.", "text-amber-400", 2500);
+                }
+            }
+        }
+
+        function spawnWaste() {
+            const maxNodes = 12 + state.player.unlockedZones * 4;
+            if (state.worldEntities.wasteNodes.length >= maxNodes) return;
+
+            const availableBuildings = MapData.buildings.filter(
+                b => !b.isCentral && !b.isDestination && Array.isArray(b.spawns) && b.zoneId <= state.player.unlockedZones
+            );
+            if (availableBuildings.length === 0) return;
+
+            const b = availableBuildings[Math.floor(Math.random() * availableBuildings.length)];
+            const group = b.spawns[Math.floor(Math.random() * b.spawns.length)];
+            const candidates = WasteItemsTemplate.filter(i => i.group === group);
+            const item = candidates[Math.floor(Math.random() * candidates.length)];
+
+            const bay = b.bay;
+            let x = bay.x + 16 + Math.random() * (bay.w - 32);
+            let y = bay.y + 12 + Math.random() * (bay.h - 20);
+
+            for (let existing of state.worldEntities.wasteNodes) {
+                if (Math.hypot(existing.x - x, existing.y - y) < 26) {
+                    x += 22;
+                }
+            }
+
+            state.worldEntities.wasteNodes.push({
+                x, y,
+                item,
+                buildingName: b.name,
+                w: 26, h: 26,
+                anim: Math.random() * 500
+            });
+        }
+
+
+        function spawnIllegalWaste() {
+            const illegalCount = state.worldEntities.wasteNodes.filter(n => n.illegal).length;
+            if (illegalCount >= 5) return;
+            const site = MapData.illegalDumpSites[Math.floor(Math.random() * MapData.illegalDumpSites.length)];
+            const dangerous = WasteItemsTemplate.filter(i => i.group !== 'D');
+            const item = dangerous[Math.floor(Math.random() * dangerous.length)];
+            state.worldEntities.wasteNodes.push({
+                x: site.x + 22 + Math.random() * Math.max(20, site.w - 44),
+                y: site.y + 22 + Math.random() * Math.max(20, site.h - 44),
+                item,
+                buildingName: site.label,
+                w: 26, h: 26,
+                anim: Math.random() * 500,
+                illegal: true
+            });
+            uiManager.notify('🚨 Denúncia: descarte irregular detectado no mapa', 'text-rose-300', 2400);
+        }
+
+        /* =========================================================================
+           9. SISTEMA DA CENTRAL DE TRIAGEM E TRATAMENTO
+           ========================================================================= */
+        const central = {
+            openMenu() {
+                uiManager.showMenu('triagemMenu');
+                document.getElementById('triagemFacilityBadge').innerText = `Central Nível ${state.player.facilityLevel}`;
+                this.renderInventory();
+                document.getElementById('triagemFeedback').innerHTML =
+                    `<span class="text-slate-300">Analise o item na bancada à esquerda e clique no setor correspondente (Grupos A, B, C, D ou E).</span>`;
+            },
+            renderInventory() {
+                const activeCard = document.getElementById('triagemActiveCard');
+                const queueContainer = document.getElementById('triagemQueue');
+                document.getElementById('triagemLoadCount').innerText = `${state.player.load.length} / ${state.player.maxCapacity}`;
+
+                if (state.player.load.length === 0) {
+                    activeCard.innerHTML = `
+                        <div class="bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl p-6 text-center">
+                            <div class="text-4xl mb-2">✅</div>
+                            <div class="text-white font-black text-base">Nenhum Resíduo Pendente</div>
+                            <p class="text-xs text-slate-400 mt-1">Sua caçamba está limpa e descontaminada. Percorra os estabelecimentos de saúde na cidade para coletar novos resíduos.</p>
+                        </div>
+                    `;
+                    queueContainer.innerHTML = `<div class="text-xs text-slate-500 text-center py-4">Fila vazia.</div>`;
+                    return;
+                }
+
+                const current = state.player.load[0];
+                const scannerHint = state.player.scannerLevel >= 1
+                    ? `<div class="mt-2 bg-sky-950/90 border border-sky-700/80 rounded-lg p-2 text-[11px] text-sky-200">
+                         <strong>🔬 Scanner Óptico:</strong> ${current.edu}
+                       </div>`
+                    : `<div class="mt-2 text-[11px] text-slate-400 italic">Dica: Adquira o Scanner Óptico nas melhorias para análise laboratorial instantânea.</div>`;
+
+                activeCard.innerHTML = `
+                    <div class="bg-slate-900 border-2 border-emerald-500/80 rounded-2xl p-4 shadow-lg">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded">Item em Triagem</span>
+                                <div class="text-[10px] text-amber-300 font-black uppercase tracking-wider mt-2">Você está prestes a classificar</div>
+                                <h4 class="text-white font-black text-lg mt-0.5 flex items-center gap-2"><span class="text-2xl">${WasteVisualIcons[current.id] || '📦'}</span>${current.name}</h4>
+                                <p class="text-xs text-slate-300 mt-1">${current.hint}</p>
+                                <div class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                                    <div class="bg-slate-950 border border-slate-700 rounded-lg p-2"><b class="text-slate-200">Origem</b><br><span class="text-slate-400">${current.sourceName || 'Coleta urbana de RSS'}</span></div>
+                                    <div class="bg-slate-950 border border-slate-700 rounded-lg p-2"><b class="text-slate-200">Decisão</b><br><span class="text-slate-400">Observe o material e escolha A, B, C, D ou E.</span></div>
+                                </div>
+                            </div>
+                            <div class="text-3xl bg-slate-800 p-3 rounded-2xl border border-slate-700">📦</div>
+                        </div>
+                        ${scannerHint}
+                    </div>
+                `;
+
+                queueContainer.innerHTML = '';
+                for (let i = 1; i < state.player.load.length; i++) {
+                    const it = state.player.load[i];
+                    const row = document.createElement('div');
+                    row.className = 'bg-slate-900/90 border border-slate-800 px-3 py-2 rounded-xl flex justify-between items-center text-xs';
+                    row.innerHTML = `
+                        <span class="font-semibold text-slate-200">${i + 1}. ${it.name}</span>
+                        <span class="text-slate-400 text-[11px]">Aguardando</span>
+                    `;
+                    queueContainer.appendChild(row);
+                }
+            },
+            processItem(selectedGroup) {
+                if (state.player.load.length === 0) return;
+
+                const item = state.player.load[0];
+                const isCorrect = item.group === selectedGroup;
+                const feedbackDiv = document.getElementById('triagemFeedback');
+
+                state.save.stats.totalSorts++;
+
+                if (isCorrect) {
+                    state.save.stats.correctSorts++;
+                    const baseReward = item.group === 'C' ? 28 : (item.group === 'E' || item.group === 'B' ? 18 : 14);
+                    const gain = Math.floor(baseReward * state.player.sortBonus);
+                    const xpGain = 12;
+
+                    soundFX.play('success');
+                    game.addCredits(gain);
+                    game.addXP(xpGain);
+
+                    const grpInfo = WasteGroups[item.group];
+                    feedbackDiv.innerHTML = `
+                        <div class="text-emerald-400 font-bold">
+                            ✅ Classificação Correta! <strong>${item.name}</strong> pertence ao <strong>Grupo ${item.group} (${grpInfo.name})</strong>.
+                            <div class="text-xs text-slate-300 font-normal mt-0.5">Encaminhamento recomendado no jogo: <em>${grpInfo.treatment}</em> • Recompensa: <strong>+${gain} Cr</strong> | <strong>+${xpGain} XP</strong></div>
+                            <div class="text-[11px] text-sky-200 mt-1">${item.group === 'D' ? '🗑️ Resíduos comuns compatíveis podem seguir para reciclagem ou aterro sanitário conforme condição.' : item.group === 'C' ? '☢️ Rejeitos radioativos seguem controle específico e não vão ao aterro sanitário comum.' : '🏭 O material segue para tratamento/destinação compatível após a segregação.'}</div>
+                        </div>
+                    `;
+
+                    missionSystem.progress('processAny', 1);
+                    if (item.group === 'A') missionSystem.progress('processA', 1);
+                    if (item.group === 'B' || item.group === 'E') missionSystem.progress('processBE', 1);
+                } else {
+                    soundFX.play('error');
+                    const penalty = 8;
+                    state.save.credits = Math.max(0, state.save.credits - penalty);
+                    const correctGrp = WasteGroups[item.group];
+
+                    feedbackDiv.innerHTML = `
+                        <div class="text-rose-400 font-bold">
+                            ⚠️ Erro de Segregação (-${penalty} Cr para descontaminação corretiva): <strong>${item.name}</strong> é do <strong>Grupo ${item.group} (${correctGrp.name})</strong>!
+                            <div class="text-xs text-slate-300 font-normal mt-0.5">${item.edu}</div>
+                        </div>
+                    `;
+                }
+
+                state.player.load.shift();
+                Storage.save();
+                uiManager.updateHUD();
+                this.renderInventory();
+            },
+            autoProcess() {
+                if (state.player.load.length === 0) return;
+
+                const count = state.player.load.length;
+                const totalGain = Math.floor(count * 6 * state.player.sortBonus);
+                const xpGain = count * 4;
+
+                soundFX.play('upgrade');
+                game.addCredits(totalGain);
+                game.addXP(xpGain);
+
+                state.player.load = [];
+                uiManager.updateHUD();
+                missionSystem.progress('processAny', count);
+
+                document.getElementById('triagemFeedback').innerHTML = `
+                    <div class="text-amber-300 font-bold">
+                        🤖 Lote de ${count} resíduo(s) segregado e tratado por equipe terceirizada (+${totalGain} Cr | +${xpGain} XP).
+                        <div class="text-xs text-slate-400 font-normal mt-0.5">Nota: A triagem manual direta gera o dobro de créditos por evitar taxas operacionais de terceiros.</div>
+                    </div>
+                `;
+                this.renderInventory();
+            }
+        };
+
+        /* =========================================================================
+           10. PROGRESSÃO, MISSÕES E INTERFACE DE ENGENHARIA/MELHORIAS
+           ========================================================================= */
+        const game = {
+            start() {
+                soundFX.init();
+                uiManager.hideMenu('mainMenu');
+                state.mode = 'playing';
+                Storage.load();
+                applyUpgrades();
+                uiManager.updateHUD();
+                missionSystem.updateUI();
+
+                if (state.worldEntities.wasteNodes.length === 0) {
+                    for (let i = 0; i < 8; i++) spawnWaste();
+                for (let i = 0; i < 2; i++) spawnIllegalWaste();
+                }
+            },
+            addCredits(val) {
+                state.save.credits += val;
+                uiManager.updateHUD();
+                Storage.save();
+            },
+            addXP(val) {
+                state.save.xp += val;
+                let nextLevelXP = state.save.level * 100;
+                while (state.save.xp >= nextLevelXP) {
+                    state.save.xp -= nextLevelXP;
+                    state.save.level++;
+                    nextLevelXP = state.save.level * 100;
+                    soundFX.play('upgrade');
+                    uiManager.notify(`⭐ Nível ${state.save.level} Alcançado!`, "text-amber-300", 3200);
+                }
+                uiManager.updateHUD();
+                Storage.save();
+            },
+            resetSave: Storage.reset
+        };
+
+        const missionSystem = {
+            get current() {
+                return MissionsData[state.save.missionIdx] || MissionsData[MissionsData.length - 1];
+            },
+            progress(type, amount) {
+                const m = this.current;
+                if (m.type === type) {
+                    state.save.missionProgress += amount;
+                    if (state.save.missionProgress >= m.target) {
+                        this.completeMission();
+                    }
+                    this.updateUI();
+                    Storage.save();
+                }
+            },
+            completeMission() {
+                const rewardCr = 60 + state.save.level * 25;
+                soundFX.play('upgrade');
+                uiManager.notify(`🎯 Missão Concluída! +${rewardCr} Cr`, "text-sky-300", 3800);
+                game.addCredits(rewardCr);
+                game.addXP(60);
+
+                if (state.save.missionIdx < MissionsData.length - 1) {
+                    state.save.missionIdx++;
+                    state.save.missionProgress = 0;
+                }
+            },
+            updateUI() {
+                const m = this.current;
+                const progressText = m.target === Infinity ? '' : ` • ${state.save.missionProgress}/${m.target}`;
+                document.getElementById('hudMissionTitle').innerText = `🎯 ${m.title}${progressText}`;
+                document.getElementById('hudMissionDesc').innerText = m.desc + (m.target === Infinity ? '' : ` (${state.save.missionProgress}/${m.target})`);
+            }
+        };
+
+        function renderUpgrades() {
+            const list = document.getElementById('upgradesList');
+            document.getElementById('upgradesCredits').innerText = state.save.credits;
+            list.innerHTML = '';
+
+            UpgradesData.forEach(upg => {
+                const lvl = state.save.upgrades[upg.id] || 0;
+                const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, lvl));
+                const isMax = lvl >= upg.maxLevel;
+                const canAfford = state.save.credits >= cost && !isMax;
+
+                let dots = '';
+                for (let i = 0; i < upg.maxLevel; i++) {
+                    dots += `<span class="inline-block w-4 h-2 rounded-full mr-1.5 ${i < lvl ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-slate-700'}"></span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-950/90 border ${isMax ? 'border-emerald-800/60' : 'border-slate-800'} p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`;
+                card.innerHTML = `
+                    <div class="flex items-start gap-3.5 flex-1">
+                        <div class="text-3xl bg-slate-900 p-3 rounded-2xl border border-slate-800">${upg.icon}</div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-white font-black text-base">${upg.name}</h4>
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-800 text-sky-300">Nv. ${lvl}/${upg.maxLevel}</span>
+                            </div>
+                            <p class="text-slate-400 text-xs mt-1 mb-2 leading-relaxed">${upg.desc}</p>
+                            <div class="flex items-center">${dots}</div>
+                        </div>
+                    </div>
+                    <button class="w-full sm:w-auto font-extrabold py-2.5 px-5 rounded-xl text-sm whitespace-nowrap transition ${
+                        isMax ? 'bg-slate-800 text-emerald-400 border border-emerald-800/50 cursor-default' :
+                        canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950' :
+                        'bg-slate-800/80 text-rose-300 border border-rose-900/60 cursor-not-allowed'
+                    }" onclick="buyUpgrade('${upg.id}')">
+                        ${isMax ? '✓ NÍVEL MÁXIMO' : `Investir • ${cost} Cr`}
+                    </button>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        window.buyUpgrade = function(id) {
+            const upg = UpgradesData.find(u => u.id === id);
+            if (!upg) return;
+            const lvl = state.save.upgrades[id] || 0;
+            const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, lvl));
+
+            if (lvl < upg.maxLevel && state.save.credits >= cost) {
+                state.save.credits -= cost;
+                state.save.upgrades[id] = lvl + 1;
+                soundFX.play('upgrade');
+                applyUpgrades();
+                Storage.save();
+                renderUpgrades();
+                uiManager.updateHUD();
+                missionSystem.progress('buyUpgrade', 1);
+
+                if (id === 'zones') {
+                    for (let i = 0; i < 4; i++) spawnWaste();
+                    uiManager.notify("🗺️ Novo Setor Urbano Desbloqueado!", "text-sky-300", 3000);
+                } else if (id === 'facility') {
+                    uiManager.notify(`🏭 Central Expandida para o Nível ${state.player.facilityLevel}!`, "text-emerald-300", 3000);
+                }
+            } else if (lvl < upg.maxLevel) {
+                soundFX.play('error');
+            }
+        };
+
+        function renderInventoryModal() {
+            const list = document.getElementById('inventoryList');
+            list.innerHTML = '';
+
+            if (state.player.load.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-8 text-slate-400">
+                        <div class="text-4xl mb-2">📭</div>
+                        <div class="font-bold text-white">Nenhum resíduo carregado no momento</div>
+                        <div class="text-xs mt-1">Aproxime-se das baias de coleta nos estabelecimentos de saúde e pressione [E] ou AÇÃO.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            state.player.load.forEach((item, idx) => {
+                const grp = WasteGroups[item.group];
+                const showGrp = state.player.scannerLevel >= 1;
+                const row = document.createElement('div');
+                row.className = 'bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-start justify-between gap-3';
+                row.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="text-2xl bg-slate-900 p-2.5 rounded-xl border border-slate-800">${grp.icon}</div>
+                        <div>
+                            <div class="font-bold text-white text-sm">${idx + 1}. ${item.name}</div>
+                            <div class="text-xs text-slate-300 mt-0.5">${item.hint}</div>
+                            <div class="text-[11px] text-sky-400 mt-1">${item.edu}</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-extrabold px-2.5 py-1 rounded-lg whitespace-nowrap" style="background:${showGrp ? grp.badgeBg : '#1e293b'}; color:#fff;">
+                        ${showGrp ? `Grupo ${item.group}` : 'Inspecionar na Central'}
+                    </span>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        /* =========================================================================
+           11. MINIGAMES EDUCATIVOS (DESAFIO DE SEGREGAÇÃO & QUIZ)
+           ========================================================================= */
+        const minigames = {
+            descTimer: 0,
+            descScore: 0,
+            descInterval: null,
+            descCurrentItem: null,
+
+            startDescarte() {
+                uiManager.hideMenu('minigameHub');
+                uiManager.showMenu('descarteGame');
+                this.descScore = 0;
+                this.descTimer = 30;
+                document.getElementById('descFeedback').innerText = "Classifique rapidamente cada resíduo no grupo correto!";
+                this.updateDescUI();
+                this.nextDescItem();
+
+                clearInterval(this.descInterval);
+                this.descInterval = setInterval(() => {
+                    this.descTimer--;
+                    this.updateDescUI();
+                    if (this.descTimer <= 0) this.endDescarte(true);
+                }, 1000);
+            },
+            nextDescItem() {
+                this.descCurrentItem = WasteItemsTemplate[Math.floor(Math.random() * WasteItemsTemplate.length)];
+                document.getElementById('descItemIcon').innerText = WasteGroups[this.descCurrentItem.group].icon;
+                document.getElementById('descItemName').innerText = this.descCurrentItem.name;
+                document.getElementById('descItemHint').innerText = this.descCurrentItem.hint;
+                const card = document.getElementById('descCard');
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.style.transform = 'scale(1)', 90);
+            },
+            checkDescarte(group) {
+                if (!this.descCurrentItem) return;
+                const feedback = document.getElementById('descFeedback');
+                if (this.descCurrentItem.group === group) {
+                    this.descScore += 10;
+                    soundFX.play('success');
+                    feedback.innerHTML = `<span class="text-emerald-400">✅ Correto! ${this.descCurrentItem.name} pertence ao Grupo ${group} (+10 pts)</span>`;
+                    if (this.descScore % 40 === 0) this.descTimer += 4;
+                } else {
+                    this.descScore = Math.max(0, this.descScore - 5);
+                    soundFX.play('error');
+                    feedback.innerHTML = `<span class="text-rose-400">❌ Atenção! ${this.descCurrentItem.name} é do Grupo ${this.descCurrentItem.group} (${WasteGroups[this.descCurrentItem.group].name}).</span>`;
+                }
+                this.updateDescUI();
+                this.nextDescItem();
+            },
+            updateDescUI() {
+                document.getElementById('descScore').innerText = this.descScore;
+                const timerEl = document.getElementById('descTimer');
+                timerEl.innerText = this.descTimer;
+                timerEl.className = this.descTimer > 10 ? 'text-emerald-400' : 'text-rose-500';
+            },
+            endDescarte(finished = false) {
+                clearInterval(this.descInterval);
+                uiManager.hideMenu('descarteGame');
+                if (finished || this.descScore > 0) {
+                    const creditsEarned = Math.floor(this.descScore * 0.6);
+                    game.addCredits(creditsEarned);
+                    game.addXP(Math.floor(this.descScore * 0.5));
+                    uiManager.notify(`⏱️ Treino Concluído! +${creditsEarned} Cr`, "text-amber-300", 3500);
+                    missionSystem.progress('scoreDescarte', this.descScore);
+                }
+            },
+
+            quizQuestions: [],
+            quizIndex: 0,
+            quizScore: 0,
+
+            startQuiz() {
+                uiManager.hideMenu('minigameHub');
+                uiManager.showMenu('quizGame');
+                this.quizQuestions = [...QuizzesData].sort(() => 0.5 - Math.random()).slice(0, 5);
+                this.quizIndex = 0;
+                this.quizScore = 0;
+                this.showQuizQuestion();
+            },
+            showQuizQuestion() {
+                if (this.quizIndex >= this.quizQuestions.length) {
+                    this.finishQuiz();
+                    return;
+                }
+                const q = this.quizQuestions[this.quizIndex];
+                document.getElementById('quizCategory').innerText = q.cat;
+                document.getElementById('quizProgress').innerText = `${this.quizIndex + 1}/${this.quizQuestions.length}`;
+                document.getElementById('quizQuestion').innerText = q.q;
+                document.getElementById('quizScore').innerText = this.quizScore;
+
+                const optsContainer = document.getElementById('quizOptions');
+                optsContainer.innerHTML = '';
+                document.getElementById('quizExplanation').classList.add('hidden');
+                document.getElementById('quizNextBtn').classList.add('hidden');
+
+                q.opts.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold py-3 px-4 rounded-xl border border-slate-700 text-left text-xs sm:text-sm transition";
+                    btn.innerText = opt;
+                    btn.onclick = () => this.checkQuiz(idx, btn);
+                    optsContainer.appendChild(btn);
+                });
+            },
+            checkQuiz(idx, btn) {
+                const q = this.quizQuestions[this.quizIndex];
+                const optsContainer = document.getElementById('quizOptions');
+                Array.from(optsContainer.children).forEach(b => b.onclick = null);
+
+                if (idx === q.ans) {
+                    soundFX.play('success');
+                    btn.className = "bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl border border-emerald-400 text-left text-xs sm:text-sm";
+                    this.quizScore += 20;
+                } else {
+                    soundFX.play('error');
+                    btn.className = "bg-rose-600 text-white font-bold py-3 px-4 rounded-xl border border-rose-400 text-left text-xs sm:text-sm";
+                    optsContainer.children[q.ans].className = "bg-emerald-900/90 text-emerald-200 font-bold py-3 px-4 rounded-xl border border-emerald-500 text-left text-xs sm:text-sm";
+                }
+
+                document.getElementById('quizScore').innerText = this.quizScore;
+                const expDiv = document.getElementById('quizExplanation');
+                expDiv.innerText = q.exp;
+                expDiv.classList.remove('hidden');
+
+                const nextBtn = document.getElementById('quizNextBtn');
+                nextBtn.classList.remove('hidden');
+                nextBtn.onclick = () => {
+                    this.quizIndex++;
+                    this.showQuizQuestion();
+                };
+            },
+            finishQuiz() {
+                uiManager.hideMenu('quizGame');
+                game.addCredits(this.quizScore);
+                game.addXP(this.quizScore);
+                uiManager.notify(`📝 Exame Finalizado! +${this.quizScore} Cr`, "text-sky-300", 4000);
+            },
+            endQuiz() {
+                uiManager.hideMenu('quizGame');
+            }
+        };
+
+        /* =========================================================================
+           12. GERENCIADOR DE INTERFACE (HUD E MODAIS)
+           ========================================================================= */
+        const uiManager = {
+            menus: ['mainMenu', 'pauseMenu', 'upgradesMenu', 'minigameHub', 'descarteGame', 'quizGame', 'triagemMenu', 'learnMenu', 'inventoryModal'],
+
+            showMenu(id) {
+                state.keys = {};
+                state.touch.dx = 0;
+                state.touch.dy = 0;
+
+                if (id !== 'mainMenu') {
+                    state.mode = 'paused';
+                }
+                this.menus.forEach(m => {
+                    const el = document.getElementById(m);
+                    if (el) el.classList.add('hidden-ui');
+                });
+                document.getElementById(id).classList.remove('hidden-ui');
+                document.getElementById('mobileControls').classList.add('hidden-ui');
+
+                if (id === 'upgradesMenu') renderUpgrades();
+                if (id === 'inventoryModal') renderInventoryModal();
+            },
+            hideMenu(id) {
+                if (id === 'descarteGame') clearInterval(minigames.descInterval);
+                document.getElementById(id).classList.add('hidden-ui');
+                const anyOpen = this.menus.some(m => !document.getElementById(m).classList.contains('hidden-ui'));
+                if (!anyOpen) {
+                    state.mode = 'playing';
+                    document.getElementById('hudLayer').classList.remove('hidden-ui');
+                    document.getElementById('mobileControls').classList.remove('hidden-ui');
+                }
+            },
+            updateHUD() {
+                document.getElementById('hudCredits').innerText = state.save.credits;
+                document.getElementById('hudLevel').innerText = state.save.level;
+                document.getElementById('hudXP').innerText = state.save.xp;
+                const nextXP = state.save.level * 100;
+                document.getElementById('hudNextXP').innerText = nextXP;
+                document.getElementById('hudXPBar').style.width = `${Math.min(100, (state.save.xp / nextXP) * 100)}%`;
+
+                document.getElementById('hudLoad').innerText = state.player.load.length;
+                document.getElementById('hudCapacity').innerText = state.player.maxCapacity;
+                document.getElementById('hudFactoryLvlBadge').innerText = `Central Nv. ${state.player.facilityLevel}`;
+
+                const eff = state.save.stats.totalSorts > 0
+                    ? Math.round((state.save.stats.correctSorts / state.save.stats.totalSorts) * 100)
+                    : 100;
+                document.getElementById('hudEfficiency').innerText = `${eff}%`;
+
+                const vNames = ['🚶 Agente EPI', '🛒 Carrinho Coletor', '🚐 Van de RSS', '🚛 Caminhão Blindado'];
+                document.getElementById('hudVehicleBadge').innerText = vNames[state.player.vehicleLevel] || vNames[0];
+
+                const loadEl = document.getElementById('hudLoad');
+                if (state.player.load.length >= state.player.maxCapacity) {
+                    loadEl.className = 'font-extrabold text-rose-400';
+                } else {
+                    loadEl.className = 'font-extrabold text-white';
+                }
+
+                if (state.mode === 'playing') {
+                    document.getElementById('hudLayer').classList.remove('hidden-ui');
+                    document.getElementById('mobileControls').classList.remove('hidden-ui');
+                }
+            },
+            showHint(icon, title, subtitle) {
+                document.getElementById('hintIcon').innerText = icon;
+                document.getElementById('hintTitle').innerText = title;
+                document.getElementById('hintSubtitle').innerText = subtitle;
+                document.getElementById('interactionHint').classList.remove('hidden-ui');
+            },
+            hideHint() {
+                document.getElementById('interactionHint').classList.add('hidden-ui');
+            },
+            notify(text, colorClass = "text-white", duration = 2200) {
+                const area = document.getElementById('notificationArea');
+                const msg = document.createElement('div');
+                msg.className = `text-sm sm:text-base font-black ${colorClass} bg-slate-900/95 border border-slate-700 px-4 py-1.5 rounded-full shadow-xl transition duration-300`;
+                msg.innerText = text;
+                area.appendChild(msg);
+
+                setTimeout(() => {
+                    msg.classList.add('opacity-0', '-translate-y-2');
+                    setTimeout(() => msg.remove(), 300);
+                }, duration);
+            }
+        };
+
+        /* =========================================================================
+           13. RENDERIZAÇÃO GRÁFICA DETALHADA NO CANVAS 2D (CIDADE, PRÉDIOS, SPRITES)
+           ========================================================================= */
+        function draw() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (state.mode === 'menu' && document.getElementById('hudLayer').classList.contains('hidden-ui')) return;
+
+            const time = performance.now();
+            ctx.save();
+            ctx.translate(-Math.floor(state.camera.x), -Math.floor(state.camera.y));
+
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(0, 0, MapData.width, MapData.height);
+
+            ctx.fillStyle = '#16a34a';
+            for (let gx = 0; gx < MapData.width; gx += 160) {
+                for (let gy = 0; gy < MapData.height; gy += 160) {
+                    if ((gx + gy) % 320 === 0) ctx.fillRect(gx, gy, 80, 80);
+                }
+            }
+
+            ctx.fillStyle = '#94a3b8';
+            MapData.roads.forEach(r => {
+                ctx.fillRect(r.x - 14, r.y - 14, r.w + 28, r.h + 28);
+            });
+
+            ctx.fillStyle = '#334155';
+            MapData.roads.forEach(r => {
+                ctx.fillRect(r.x, r.y, r.w, r.h);
+            });
+
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([22, 22]);
+            ctx.beginPath();
+            MapData.roads.forEach(r => {
+                if (r.dir === 'h') {
+                    ctx.moveTo(r.x, r.y + r.h / 2);
+                    ctx.lineTo(r.x + r.w, r.y + r.h / 2);
+                } else if (r.dir === 'v') {
+                    ctx.moveTo(r.x + r.w / 2, r.y);
+                    ctx.lineTo(r.x + r.w / 2, r.y + r.h);
+                }
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#e2e8f0';
+            const crosswalks = [
+                { x: 675, y: 528, vertical: true }, { x: 815, y: 528, vertical: true },
+                { x: 1555, y: 528, vertical: true }, { x: 1695, y: 528, vertical: true },
+                { x: 675, y: 1228, vertical: true }, { x: 815, y: 1228, vertical: true },
+                { x: 1555, y: 1228, vertical: true }, { x: 1695, y: 1228, vertical: true }
+            ];
+            crosswalks.forEach(cw => {
+                for (let i = 0; i < 6; i++) {
+                    ctx.fillRect(cw.x, cw.y + i * 16, 20, 9);
+                }
+            });
+
+            MapData.buildings.forEach(b => {
+                if (b.isCentral) {
+                    drawCentralFacility(b, time);
+                } else if (b.isDestination) {
+                    drawLandfill(b, time);
+                } else {
+                    drawHealthEstablishment(b, time);
+                }
+            });
+
+            drawIllegalDumpSites(time);
+
+            MapData.parkedCars.forEach(car => drawVehicleProps(car));
+            MapData.traffic.forEach(car => drawVehicleProps(car));
+
+            MapData.trees.forEach(t => {
+                ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                ctx.beginPath();
+                ctx.arc(t.x + 5, t.y + 6, t.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = t.shade;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.arc(t.x - 5, t.y - 5, t.r * 0.65, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            state.worldEntities.wasteNodes.forEach(node => {
+                drawWasteSprite(node, time);
+            });
+
+            drawPlayerUnit(time);
+
+            state.worldEntities.particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = Math.max(0, pt.alpha);
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            state.worldEntities.floatingTexts.forEach(ft => {
+                ctx.font = '800 13px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000';
+                ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+            });
+
+            if (state.player.load.length > 0 && !isNearCentral) {
+                drawGPSArrow(time);
+            }
+
+            ctx.restore();
+
+            drawMinimap();
+        }
+
+        function drawHealthEstablishment(b, time) {
+            const unlocked = b.zoneId <= state.player.unlockedZones;
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(b.x - 16, b.y - 16, b.w + 32, b.h + 32);
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+            ctx.fillRect(b.x + 10, b.y + 12, b.w, b.h);
+
+            ctx.fillStyle = unlocked ? b.wallColor : '#475569';
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+
+            ctx.fillStyle = unlocked ? b.roofColor : '#334155';
+            ctx.fillRect(b.x + 12, b.y + 12, b.w - 24, b.h - 46);
+
+            ctx.fillStyle = unlocked ? b.accent : '#64748b';
+            ctx.fillRect(b.x, b.y + b.h - 34, b.w, 10);
+
+            const doorX = b.x + b.w / 2 - 36;
+            const doorY = b.y + b.h - 24;
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(doorX, doorY, 72, 24);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(doorX + 4, doorY + 4, 30, 18);
+            ctx.fillRect(doorX + 38, doorY + 4, 30, 18);
+
+            if (b.id === 'hospital') {
+                const hx = b.x + 90, hy = b.y + 120;
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(hx, hy, 42, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = '#ef4444';
+                ctx.font = '900 32px Inter';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('H', hx, hy);
+
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(b.x + b.w - 85, b.y + 38, 36, 12);
+                ctx.fillRect(b.x + b.w - 73, b.y + 26, 12, 36);
+            }
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+            ctx.fillRect(b.x + 24, b.y + b.h / 2 - 26, b.w - 48, 48);
+            ctx.strokeStyle = unlocked ? b.accent : '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(b.x + 24, b.y + b.h / 2 - 26, b.w - 48, 48);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 15px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(b.name, b.x + b.w / 2, b.y + b.h / 2 - 9);
+
+            ctx.fillStyle = unlocked ? '#38bdf8' : '#fca5a5';
+            ctx.font = '600 11px Inter';
+            ctx.fillText(
+                unlocked ? b.sector : '🔒 Setor Bloqueado (Desbloqueie em Melhorias 🛠️)',
+                b.x + b.w / 2,
+                b.y + b.h / 2 + 10
+            );
+
+            if (b.bay) {
+                const bay = b.bay;
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(bay.x, bay.y, bay.w, bay.h);
+                ctx.strokeStyle = unlocked ? '#f59e0b' : '#475569';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bay.x, bay.y, bay.w, bay.h);
+
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(bay.x + 6, bay.y + 6, 12, 12);
+                ctx.fillStyle = '#0ea5e9';
+                ctx.fillRect(bay.x + 22, bay.y + 6, 12, 12);
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = '700 9px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(bay.label, bay.x + bay.w / 2, bay.y + bay.h - 6);
+            }
+        }
+
+        function drawCentralFacility(b, time) {
+            const lvl = state.player.facilityLevel;
+            const ent = b.entrance;
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(b.x - 20, b.y - 25, b.w + 40, b.h + 45);
+
+            const pulse = 0.65 + Math.sin(time / 250) * 0.25;
+            ctx.fillStyle = isNearCentral ? 'rgba(16, 185, 129, 0.45)' : `rgba(16, 185, 129, ${pulse * 0.3})`;
+            ctx.fillRect(ent.x, ent.y, ent.w, ent.h);
+
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(ent.x, ent.y, ent.w, ent.h);
+
+            ctx.fillStyle = '#fbbf24';
+            for (let sx = ent.x + 6; sx < ent.x + ent.w - 10; sx += 24) {
+                ctx.fillRect(sx, b.y - 8, 12, 8);
+            }
+
+            ctx.fillStyle = '#ecfdf5';
+            ctx.font = '900 12px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('⬇️ DOCA DE RECEBIMENTO E TRIAGEM ⬇️', ent.x + ent.w / 2, ent.y + 22);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(b.x + 12, b.y + 12, b.w, b.h);
+
+            ctx.fillStyle = lvl >= 4 ? '#f8fafc' : '#fef3c7';
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+
+            ctx.fillStyle = lvl >= 4 ? '#cbd5e1' : '#fde68a';
+            ctx.fillRect(b.x + 14, b.y + 28, b.w - 28, b.h - 42);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(ent.x + 15, b.y, ent.w - 30, 26);
+            ctx.fillStyle = '#38bdf8';
+            for (let py = b.y + 4; py < b.y + 24; py += 6) {
+                ctx.fillRect(ent.x + 20, py, ent.w - 40, 3);
+            }
+
+            const beaconColor = (Math.floor(time / 400) % 2 === 0) ? '#10b981' : '#34d399';
+            ctx.fillStyle = beaconColor;
+            ctx.beginPath();
+            ctx.arc(ent.x + 8, b.y + 8, 6, 0, Math.PI * 2);
+            ctx.arc(ent.x + ent.w - 8, b.y + 8, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            const groupColors = ['#ef4444', '#f97316', '#a855f7', '#0ea5e9', '#eab308'];
+            const groupLetters = ['A', 'B', 'C', 'D', 'E'];
+            groupColors.forEach((col, idx) => {
+                const bx = b.x + 34 + idx * 54;
+                const by = b.y + 52;
+                ctx.fillStyle = col;
+                ctx.fillRect(bx, by, 42, 42);
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bx, by, 42, 42);
+                ctx.fillStyle = '#fff';
+                ctx.font = '900 15px Inter';
+                ctx.fillText(groupLetters[idx], bx + 21, by + 23);
+            });
+
+            if (lvl >= 2) {
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(b.x + 34, b.y + 215, 150, 95);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(b.x + 46, b.y + 228, 126, 68);
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '800 11px Inter';
+                ctx.fillText('AUTOCLAVE NV.2', b.x + 109, b.y + 262);
+            }
+
+            if (lvl >= 3) {
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.arc(b.x + 410, b.y + 255, 32, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.stroke();
+                ctx.fillStyle = '#fff';
+                ctx.font = '800 10px Inter';
+                ctx.fillText('QUÍM. B', b.x + 410, b.y + 255);
+
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(b.x + b.w - 80, b.y + 30, 50, 50);
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(b.x + b.w - 55, b.y + 55, 16, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (lvl >= 4) {
+                ctx.fillStyle = '#581c87';
+                ctx.fillRect(b.x + 210, b.y + 215, 140, 95);
+                ctx.strokeStyle = '#c084fc';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(b.x + 210, b.y + 215, 140, 95);
+                ctx.fillStyle = '#f3e8ff';
+                ctx.font = '800 11px Inter';
+                ctx.fillText('☢️ BUNKER CNEN', b.x + 280, b.y + 262);
+            }
+
+            if (lvl >= 5) {
+                ctx.fillStyle = '#1d4ed8';
+                for (let px = b.x + 320; px < b.x + 430; px += 38) {
+                    ctx.fillRect(px, b.y + 52, 32, 44);
+                }
+            }
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.fillRect(b.x + 40, b.y + 125, b.w - 80, 62);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(b.x + 40, b.y + 125, b.w - 80, 62);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 18px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${b.name} (Nível ${lvl}/5)`, b.x + b.w / 2, b.y + 148);
+
+            ctx.fillStyle = '#34d399';
+            ctx.font = '700 12px Inter';
+            ctx.fillText('Aproxime-se da Doca Norte e pressione [E] ou AÇÃO para Triagem', b.x + b.w / 2, b.y + 170);
+        }
+
+        function drawWasteSprite(node, time) {
+            const bounce = Math.sin((time + node.anim) / 180) * 3;
+            const x = node.x, y = node.y + bounce, id = node.item.id;
+            const group = WasteGroups[node.item.group];
+            ctx.save();
+            ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x,node.y+13,13,5,0,0,Math.PI*2); ctx.fill();
+            ctx.lineWidth=2.2; ctx.strokeStyle='#0f172a';
+            if(id==='gaze'){ ctx.fillStyle='#f8fafc'; ctx.beginPath(); ctx.roundRect(x-12,y-9,24,18,5); ctx.fill(); ctx.stroke(); ctx.strokeStyle='#ef4444'; ctx.beginPath(); ctx.moveTo(x-6,y);ctx.lineTo(x+6,y);ctx.moveTo(x,y-6);ctx.lineTo(x,y+6);ctx.stroke(); }
+            else if(id==='tubo_sangue'){ ctx.fillStyle='#e2e8f0';ctx.beginPath();ctx.roundRect(x-6,y-14,12,27,5);ctx.fill();ctx.stroke();ctx.fillStyle='#b91c1c';ctx.fillRect(x-4,y+1,8,10);ctx.fillStyle='#7f1d1d';ctx.fillRect(x-7,y-15,14,5); }
+            else if(id==='placa_petri'){ ctx.fillStyle='#dbeafe';ctx.beginPath();ctx.arc(x,y,13,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#84cc16';ctx.beginPath();ctx.arc(x-4,y-2,3,0,Math.PI*2);ctx.arc(x+5,y+3,2,0,Math.PI*2);ctx.fill(); }
+            else if(id==='bolsa_transfusao'){ ctx.fillStyle='#fee2e2';ctx.beginPath();ctx.roundRect(x-10,y-13,20,25,4);ctx.fill();ctx.stroke();ctx.fillStyle='#dc2626';ctx.fillRect(x-7,y-3,14,11);ctx.fillStyle='#fff';ctx.font='900 9px Inter';ctx.textAlign='center';ctx.fillText('+',x,y-5); }
+            else if(id==='xarope_vencido'){ ctx.fillStyle='#f97316';ctx.beginPath();ctx.roundRect(x-9,y-11,18,22,4);ctx.fill();ctx.stroke();ctx.fillStyle='#fde68a';ctx.fillRect(x-6,y-5,12,8);ctx.fillStyle='#7c2d12';ctx.fillRect(x-5,y-15,10,5); }
+            else if(id==='solvente_xilol'){ ctx.fillStyle='#ea580c';ctx.beginPath();ctx.roundRect(x-12,y-10,24,21,3);ctx.fill();ctx.stroke();ctx.fillStyle='#111827';ctx.fillRect(x-5,y-15,10,5);ctx.fillStyle='#fde047';ctx.beginPath();ctx.moveTo(x,y-5);ctx.lineTo(x+6,y+4);ctx.lineTo(x-6,y+4);ctx.closePath();ctx.fill(); }
+            else if(id==='revelador_rx'){ ctx.fillStyle='#9a3412';ctx.fillRect(x-11,y-11,22,23);ctx.strokeRect(x-11,y-11,22,23);ctx.fillStyle='#fb923c';ctx.fillRect(x-7,y-5,14,9);ctx.fillStyle='#111827';ctx.fillRect(x-4,y-15,8,5); }
+            else if(id==='seringa_isotopo'){ ctx.fillStyle='#6b21a8';ctx.beginPath();ctx.arc(x,y,13,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fde047';ctx.font='900 14px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('☢',x,y); }
+            else if(id==='luva_iodo131'){ ctx.fillStyle='#a855f7';ctx.beginPath();ctx.roundRect(x-10,y-12,20,24,6);ctx.fill();ctx.stroke();ctx.fillStyle='#fde047';ctx.font='900 11px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('I-131',x,y); }
+            else if(id==='copo_plastico'){ ctx.fillStyle='#e0f2fe';ctx.beginPath();ctx.moveTo(x-9,y-11);ctx.lineTo(x+9,y-11);ctx.lineTo(x+6,y+12);ctx.lineTo(x-6,y+12);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#38bdf8';ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x+6,y);ctx.stroke(); }
+            else if(id==='papel_adm'){ ctx.fillStyle='#f8fafc';ctx.fillRect(x-10,y-13,20,26);ctx.strokeRect(x-10,y-13,20,26);ctx.strokeStyle='#64748b';ctx.lineWidth=1;for(let i=-6;i<=6;i+=6){ctx.beginPath();ctx.moveTo(x-6,y+i);ctx.lineTo(x+6,y+i);ctx.stroke();} }
+            else if(id==='papel_toalha'){ ctx.fillStyle='#f1f5f9';ctx.beginPath();ctx.roundRect(x-12,y-8,24,16,3);ctx.fill();ctx.stroke();ctx.strokeStyle='#94a3b8';ctx.beginPath();ctx.moveTo(x-7,y-3);ctx.quadraticCurveTo(x,y+4,x+7,y-3);ctx.stroke(); }
+            else if(id==='agulha_usada'){ ctx.fillStyle='#facc15';ctx.fillRect(x-12,y-11,24,22);ctx.strokeRect(x-12,y-11,24,22);ctx.fillStyle='#dc2626';ctx.font='900 13px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('☣',x,y); }
+            else if(id==='lamina_bisturi'){ ctx.strokeStyle='#cbd5e1';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-11,y+8);ctx.lineTo(x+8,y-7);ctx.stroke();ctx.fillStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(x+5,y-10);ctx.lineTo(x+13,y-13);ctx.lineTo(x+9,y-4);ctx.closePath();ctx.fill();ctx.stroke(); }
+            else { ctx.fillStyle='#fde68a';ctx.beginPath();ctx.moveTo(x-12,y+8);ctx.lineTo(x-3,y-12);ctx.lineTo(x+2,y+4);ctx.lineTo(x+10,y-9);ctx.lineTo(x+12,y+11);ctx.closePath();ctx.fill();ctx.stroke(); }
+            ctx.fillStyle=group.color;ctx.beginPath();ctx.arc(x+12,y-12,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();
+            if(state.player.scannerLevel>=2){ctx.fillStyle='rgba(7,17,31,.9)';ctx.beginPath();ctx.roundRect(x-12,y-29,24,12,6);ctx.fill();ctx.fillStyle=group.color;ctx.font='900 9px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(node.item.group,x,y-23);}
+            ctx.restore();
+        }
+
+        function drawPlayerUnit(time) {
+            const p = state.player;
+            const cx = p.x + p.w / 2;
+            const cy = p.y + p.h / 2;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            if (p.vehicleLevel >= 2) {
+                ctx.rotate(p.angle);
+                const isTruck = p.vehicleLevel >= 3;
+                const vw = isTruck ? 64 : 52;
+                const vh = isTruck ? 34 : 28;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                ctx.fillRect(-vw / 2 + 4, -vh / 2 + 5, vw, vh);
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(-vw / 2, -vh / 2, vw, vh);
+                ctx.strokeStyle = isTruck ? '#059669' : '#0284c7';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-vw / 2, -vh / 2, vw, vh);
+
+                ctx.fillStyle = isTruck ? '#10b981' : '#38bdf8';
+                ctx.fillRect(vw / 2 - 16, -vh / 2 + 2, 14, vh - 4);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(vw / 2 - 10, -vh / 2 + 4, 6, vh - 8);
+
+                const ratio = p.load.length / p.maxCapacity;
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(-vw / 2 + 6, -vh / 2 + 6, vw - 26, vh - 12);
+                ctx.fillStyle = ratio >= 1 ? '#ef4444' : '#10b981';
+                ctx.fillRect(-vw / 2 + 6, -vh / 2 + 6, (vw - 26) * ratio, vh - 12);
+            } else {
+                const legSwing = p.isMoving ? Math.sin(p.walkCycle) * 6 : 0;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.32)';
+                ctx.beginPath();
+                ctx.ellipse(0, 14, 14, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (p.vehicleLevel === 1) {
+                    ctx.fillStyle = '#eab308';
+                    ctx.strokeStyle = '#713f12';
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(-16, -28, 32, 16);
+                    ctx.strokeRect(-16, -28, 32, 16);
+                }
+
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(-9, 8 + legSwing, 7, 8);
+                ctx.fillRect(2, 8 - legSwing, 7, 8);
+
+                ctx.fillStyle = '#0284c7';
+                ctx.fillRect(-11, -8, 22, 18);
+                ctx.fillStyle = '#a3e635';
+                ctx.fillRect(-11, 1, 22, 3);
+
+                ctx.fillStyle = '#0284c7';
+                ctx.fillRect(-16, -6 - legSwing * 0.6, 5, 12);
+                ctx.fillRect(11, -6 + legSwing * 0.6, 5, 12);
+                ctx.fillStyle = '#4ade80';
+                ctx.beginPath();
+                ctx.arc(-13.5, 7 - legSwing * 0.6, 3.5, 0, Math.PI * 2);
+                ctx.arc(13.5, 7 + legSwing * 0.6, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(0, -10, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#38bdf8';
+                let vx = 0, vy = -10;
+                if (p.dir === 'right') vx = 4;
+                if (p.dir === 'left') vx = -4;
+                if (p.dir === 'down') vy = -6;
+                if (p.dir === 'up') vy = -13;
+                ctx.fillRect(vx - 5, vy - 2, 10, 4);
+            }
+
+            ctx.restore();
+
+            if (p.load.length > 0) {
+                const isFull = p.load.length >= p.maxCapacity;
+                ctx.fillStyle = isFull ? '#dc2626' : 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(cx - 22, p.y - 22, 44, 16);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '800 10px Inter';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`📦 ${p.load.length}/${p.maxCapacity}`, cx, p.y - 14);
+            }
+        }
+
+        function drawLandfill(b, time) {
+            ctx.fillStyle = '#78716c';
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+            ctx.fillStyle = '#a8a29e';
+            ctx.fillRect(b.x + 18, b.y + 18, b.w - 36, 58);
+            ctx.fillStyle = '#1c1917';
+            ctx.font = '900 18px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('ATERRO SANITÁRIO MUNICIPAL', b.x + b.w / 2, b.y + 52);
+            ctx.font = '700 11px Inter';
+            ctx.fillStyle = '#fef3c7';
+            ctx.fillText('DESTINO CONTROLADO • NÃO RECEBE RSS INCOMPATÍVEL', b.x + b.w / 2, b.y + 70);
+            for (let i = 0; i < 5; i++) {
+                ctx.fillStyle = i % 2 ? '#57534e' : '#44403c';
+                ctx.fillRect(b.x + 35 + i * 85, b.y + 105 + (i % 2) * 30, 72, 48);
+                ctx.fillStyle = '#84cc16';
+                ctx.fillRect(b.x + 38 + i * 85, b.y + 108 + (i % 2) * 30, 66, 7);
+            }
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(b.x - 95, b.y + 80, 95, 120);
+            ctx.fillStyle = '#111827';
+            ctx.font = '900 10px Inter';
+            ctx.fillText('BALANÇA', b.x - 48, b.y + 145);
+        }
+
+        function drawIllegalDumpSites(time) {
+            MapData.illegalDumpSites.forEach((site, index) => {
+                const pulse = 0.35 + Math.sin(time / 260 + index) * 0.12;
+                ctx.save();
+                ctx.globalAlpha = pulse;
+                ctx.fillStyle = '#7f1d1d';
+                ctx.fillRect(site.x, site.y, site.w, site.h);
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([8, 6]);
+                ctx.strokeRect(site.x, site.y, site.w, site.h);
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#fee2e2';
+                ctx.font = '900 10px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠ DESCARTE IRREGULAR', site.x + site.w / 2, site.y + 16);
+                ctx.fillStyle = '#fecaca';
+                ctx.font = '700 9px Inter';
+                ctx.fillText(site.label.toUpperCase(), site.x + site.w / 2, site.y + 31);
+                ctx.restore();
+            });
+        }
+
+        function drawVehicleProps(car) {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(car.x + 3, car.y + 4, car.w, car.h);
+
+            ctx.fillStyle = car.color;
+            ctx.fillRect(car.x, car.y, car.w, car.h);
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(car.x, car.y, car.w, car.h);
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(car.x + 8, car.y + 4, car.w - 16, car.h - 8);
+
+            if (car.type === 'ambulance') {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(car.x + 4, car.y + 4, car.w - 18, car.h - 8);
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(car.x + 14, car.y + 12, 14, 4);
+                ctx.fillRect(car.x + 19, car.y + 7, 4, 14);
+            }
+        }
+
+        function getGuideTarget() {
+            const p = state.player;
+            const centralB = MapData.buildings.find(b => b.isCentral);
+            if (p.load.length >= p.maxCapacity || (p.load.length > 0 && state.worldEntities.wasteNodes.length === 0)) {
+                return { x: centralB.entrance.x + centralB.entrance.w / 2, y: centralB.entrance.y + centralB.entrance.h / 2, label: 'LEVAR À CENTRAL', icon: '🏭', color: '#10b981' };
+            }
+            if (state.worldEntities.wasteNodes.length) {
+                const px = p.x + p.w / 2;
+                const py = p.y + p.h / 2;
+                const node = state.worldEntities.wasteNodes.reduce((best,n) => Math.hypot(n.x-px,n.y-py) < Math.hypot(best.x-px,best.y-py) ? n : best);
+                return { x: node.x, y: node.y, label: 'PONTO DE COLETA', icon: '📦', color: '#38bdf8' };
+            }
+            return { x: centralB.entrance.x + centralB.entrance.w / 2, y: centralB.entrance.y + centralB.entrance.h / 2, label: 'CENTRAL', icon: '🏭', color: '#10b981' };
+        }
+
+        function drawGPSArrow(time) {
+            const target = getGuideTarget();
+            const px = state.player.x + state.player.w / 2;
+            const py = state.player.y + state.player.h / 2;
+            const dist = Math.hypot(target.x - px, target.y - py);
+            if (dist < 90) return;
+            const angle = Math.atan2(target.y - py, target.x - px);
+            const radius = 58 + Math.sin(time / 180) * 3;
+            const ax = px + Math.cos(angle) * radius;
+            const ay = py + Math.sin(angle) * radius;
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(angle);
+            ctx.fillStyle = target.color;
+            ctx.strokeStyle = '#07111f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(15, 0); ctx.lineTo(-9, -9); ctx.lineTo(-4, 0); ctx.lineTo(-9, 9); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.font = '800 10px Inter';
+            const meters = Math.max(1, Math.round(dist / 10));
+            const text = `${target.icon} ${target.label} • ${meters}m`;
+            const tw = ctx.measureText(text).width + 18;
+            const bx = px - tw / 2;
+            const by = py - 82;
+            ctx.fillStyle = 'rgba(7,17,31,.88)'; ctx.strokeStyle = target.color; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.roundRect(bx, by, tw, 24, 12); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f8fafc'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, px, by + 12);
+            ctx.restore();
+        }
+
+        function drawMinimap() {
+            if (minimapCollapsed) return;
+            const isMobile = window.innerWidth <= 900;
+            const mw = isMobile ? 130 : 180;
+            const mh = isMobile ? 102 : 142;
+            const mx = 16;
+            const landscape = window.innerWidth > window.innerHeight;
+            const my = isMobile ? canvas.height - mh - (landscape ? 112 : 132) : canvas.height - mh - 20;
+
+            const scaleX = mw / MapData.width;
+            const scaleY = mh / MapData.height;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.fillRect(mx, my, mw, mh);
+            ctx.strokeRect(mx, my, mw, mh);
+
+            ctx.fillStyle = '#475569';
+            MapData.roads.forEach(r => {
+                ctx.fillRect(mx + r.x * scaleX, my + r.y * scaleY, r.w * scaleX, r.h * scaleY);
+            });
+
+            MapData.buildings.forEach(b => {
+                const unlocked = b.isCentral || b.isDestination || b.zoneId <= state.player.unlockedZones;
+                ctx.fillStyle = b.isCentral ? '#10b981' : (b.isDestination ? '#a8a29e' : (unlocked ? b.accent : '#334155'));
+                ctx.fillRect(mx + b.x * scaleX, my + b.y * scaleY, b.w * scaleX, b.h * scaleY);
+            });
+
+            state.worldEntities.wasteNodes.forEach(n => {
+                ctx.fillStyle = n.illegal ? '#ef4444' : '#fde047';
+                ctx.fillRect(mx + n.x * scaleX - 1.5, my + n.y * scaleY - 1.5, 3, 3);
+            });
+
+            const guide = getGuideTarget();
+            ctx.strokeStyle = guide.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(mx + guide.x * scaleX, my + guide.y * scaleY, 6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = guide.color;
+            ctx.beginPath();
+            ctx.arc(mx + guide.x * scaleX, my + guide.y * scaleY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(mx + state.player.x * scaleX, my + state.player.y * scaleY, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0284c7';
+            ctx.stroke();
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '800 9px Inter';
+            ctx.textAlign = 'left';
+            ctx.fillText('MAPA URBANO', mx + 6, my + 11);
+            ctx.restore();
+        }
+
+        /* =========================================================================
+           14. LOOP PRINCIPAL DE EXECUÇÃO
+           ========================================================================= */
+        function loop(timestamp) {
+            const dt = (timestamp - state.lastTime) / 1000;
+            state.lastTime = timestamp;
+
+            if (dt > 0 && dt < 0.1) {
+                update(dt);
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        window.onload = () => {
+            Storage.load();
+            applyUpgrades();
+            uiManager.showMenu('mainMenu');
+            requestAnimationFrame(t => {
+                state.lastTime = t;
+                loop(t);
+            });
+        };
+    </script>
+</body>
+</html>
